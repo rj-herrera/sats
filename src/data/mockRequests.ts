@@ -67,7 +67,7 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
         fileName: 'analysis-summary.pdf',
         fileSize: 586,
         fileType: 'application/pdf',
-        downloadUrl: '/samples/analysis-summary.pdf',
+        downloadUrl: `${import.meta.env.BASE_URL}samples/analysis-summary.pdf`,
       },
     ],
     reviewers: [
@@ -127,7 +127,7 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
         fileName: 'site-photo.png',
         fileSize: 721,
         fileType: 'image/png',
-        downloadUrl: '/samples/site-photo.png',
+        downloadUrl: `${import.meta.env.BASE_URL}samples/site-photo.png`,
       },
     ],
     reviewers: [

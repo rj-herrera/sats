@@ -1,0 +1,6 @@
+RewriteEngine On
+RewriteBase /sats_demo/
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /sats_demo/index.html [L]

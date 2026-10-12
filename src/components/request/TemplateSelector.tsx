@@ -11,7 +11,10 @@ export function TemplateSelector({
   templates,
   value,
   onChange,
+  description,
 }: TemplateSelectorProps) {
+  const trimmedDescription = description?.trim();
+
   return (
     <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
       <label htmlFor="template-select" className="block text-sm font-medium text-brand-800">
@@ -31,6 +34,9 @@ export function TemplateSelector({
           </option>
         ))}
       </select>
+      {trimmedDescription ? (
+        <p className="mt-2 text-sm leading-relaxed text-brand-600">{trimmedDescription}</p>
+      ) : null}
     </section>
   );
 }

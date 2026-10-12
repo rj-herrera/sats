@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ActivityTimeline } from '@/components/request/ActivityTimeline';
 import { ApprovalProgress } from '@/components/request/ApprovalProgress';
 import { DecisionConfirmationDialog } from '@/components/request/DecisionConfirmationDialog';
@@ -22,10 +22,7 @@ import {
   isUserAssignedToRequest,
 } from '@/utils/assignmentHelpers';
 import { formatDateTime } from '@/utils/formatDisplay';
-import {
-  canUserOpenReview,
-  canUserTakeAction,
-} from '@/utils/requestAccess';
+import { canUserOpenReview, canUserTakeAction } from '@/utils/requestAccess';
 import { getRequestDisplayTitle } from '@/utils/requestTitle';
 
 export function ReviewPage() {
@@ -78,22 +75,7 @@ export function ReviewPage() {
   }
 
   if (!canUserOpenReview(user, request)) {
-    return (
-      <PageScroll>
-        <div className="mx-auto max-w-lg rounded-lg border border-brand-100 bg-white px-6 py-12 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-brand-900">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-600">
-            You are not assigned to review or approve this request.
-          </p>
-          <Link
-            to={paths.inbox}
-            className="mt-6 inline-block rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
-          >
-            Back to Action Inbox
-          </Link>
-        </div>
-      </PageScroll>
-    );
+    return <Navigate to={paths.requests} replace />;
   }
 
   const canAct = canUserTakeAction(user, request);

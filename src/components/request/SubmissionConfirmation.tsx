@@ -15,8 +15,8 @@ export function SubmissionConfirmation({
       <p className="text-sm font-medium text-emerald-700">Request submitted</p>
       <h1 className="mt-1 text-2xl font-semibold text-brand-900">Submission confirmed</h1>
       <p className="mt-3 text-sm leading-relaxed text-brand-600">
-        Your request was saved in this browser&apos;s mock storage (localStorage). Approval
-        processing will be implemented in a later phase.
+        Your request has been submitted and is now Pending. The assigned reviewer can act
+        on it from the Action Inbox. Use the request number below to find it in My Requests.
       </p>
       <div className="mt-5 rounded-md border border-brand-100 bg-brand-50 px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">

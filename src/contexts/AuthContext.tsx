@@ -30,8 +30,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Directory re-reads always allocate a new object. Keep the previous one when nothing changed. */
+function usersAreEqual(current: User, next: User): boolean {
+  return JSON.stringify(current) === JSON.stringify(next);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(() => ensureMockSession());
+
+  const commitSessionUser = useCallback((next: User) => {
+    setUser((current) => (usersAreEqual(current, next) ? current : next));
+  }, []);
 
   const switchUser = useCallback((userId: string) => {
     setUser(loginAsMockUser(userId));
@@ -44,14 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(() => {
-    setUser(refreshSessionUser());
-  }, []);
+    commitSessionUser(refreshSessionUser());
+  }, [commitSessionUser]);
 
   useEffect(() => {
-    const onFocus = () => setUser(refreshSessionUser());
+    const onFocus = () => commitSessionUser(refreshSessionUser());
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, []);
+  }, [commitSessionUser]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

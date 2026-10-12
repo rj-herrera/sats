@@ -84,19 +84,28 @@ export function DynamicFormField({
   }
 
   if (field.type === 'select') {
+    const selected = typeof value === 'string' ? value : '';
+    const prompt = field.placeholder?.trim() || 'Select…';
+    const selectClass = `${controlClass
+      .replace('px-3', 'pl-3 pr-10')
+      .replace(
+        'text-brand-900',
+        selected === '' ? 'text-brand-400' : 'text-brand-900',
+      )} [&>option]:text-brand-900`;
+
     return (
       <div>
         {label}
         <select
           id={inputId}
-          className={controlClass.replace('px-3', 'pl-3 pr-10')}
-          value={typeof value === 'string' ? value : ''}
+          className={selectClass}
+          value={selected}
           required={field.required}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">{field.placeholder ?? 'Select…'}</option>
+          <option value="">{prompt}</option>
           {(field.options ?? []).map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}

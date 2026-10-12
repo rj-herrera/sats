@@ -131,6 +131,10 @@ export function TemplateEditorPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Re-seed only when the signed-in user or template changes. A refreshed user
+  // object with the same id (window focus) must not discard in-progress input.
+  const draftKey = `${user?.id ?? ''}:${id ?? 'new'}`;
+
   useEffect(() => {
     if (!user) return;
     if (!isNew && existing && !canManageTemplate(user, existing)) return;
@@ -140,7 +144,7 @@ export function TemplateEditorPage() {
     setStepIndex(0);
     setError(null);
     setMessage(null);
-  }, [user, isNew, existing]);
+  }, [draftKey]);
 
   const dirty = state ? JSON.stringify(state) !== baseline : false;
 
@@ -257,18 +261,18 @@ export function TemplateEditorPage() {
       return;
     }
 
+    if (status === 'Active') {
+      navigate(paths.templates, {
+        replace: true,
+        state: { message: 'Template saved and activated.' },
+      });
+      return;
+    }
+
     const nextState = buildInitialState(user, result.template);
     setState(nextState);
     setBaseline(JSON.stringify(nextState));
-    setMessage(
-      status === 'Active'
-        ? 'Template saved and activated.'
-        : 'Template saved as Inactive.',
-    );
-
-    if (isNew) {
-      navigate(paths.templateEdit(result.template.id), { replace: true });
-    }
+    setMessage('Template saved as Inactive.');
   };
 
   const previewTemplate = toPreviewTemplate(
@@ -280,6 +284,7 @@ export function TemplateEditorPage() {
   const currentStep = STEPS[stepIndex] ?? STEPS[0];
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === STEPS.length - 1;
+  const needsFields = currentStep.id === 'fields' && state.fields.length === 0;
 
   const goPrevious = () => {
     setError(null);
@@ -297,6 +302,8 @@ export function TemplateEditorPage() {
         return;
       }
     }
+
+    if (needsFields) return;
 
     setStepIndex((i) => Math.min(STEPS.length - 1, i + 1));
   };
@@ -453,8 +460,9 @@ export function TemplateEditorPage() {
             </button>
             <button
               type="button"
+              disabled={needsFields}
               onClick={goNext}
-              className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+              className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
             </button>

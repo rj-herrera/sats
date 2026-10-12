@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { ActivityTimeline } from '@/components/request/ActivityTimeline';
 import { ApprovalProgress } from '@/components/request/ApprovalProgress';
 import { CancelRequestDialog } from '@/components/request/CancelRequestDialog';
@@ -11,6 +11,7 @@ import { SubmittedFieldValues } from '@/components/request/SubmittedFieldValues'
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
+import { canAccessActionInbox } from '@/services/inboxService';
 import { cancelRequest } from '@/services/requestLifecycleService';
 import { getRequestById } from '@/services/requestRepository';
 import { getTemplateById } from '@/services/templateService';
@@ -60,23 +61,12 @@ export function RequestDetailsPage() {
     );
   }
 
+  if (user && user.id !== request.requesterId && canAccessActionInbox(user)) {
+    return <Navigate to={paths.inbox} replace />;
+  }
+
   if (!canUserViewRequest(user, request)) {
-    return (
-      <PageScroll>
-        <div className="mx-auto max-w-lg rounded-lg border border-brand-100 bg-white px-6 py-12 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-brand-900">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-600">
-            You do not have permission to view this request.
-          </p>
-          <Link
-            to={paths.requests}
-            className="mt-6 inline-block rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
-          >
-            Back to My Requests
-          </Link>
-        </div>
-      </PageScroll>
-    );
+    return <Navigate to={paths.requests} replace />;
   }
 
   const fields =

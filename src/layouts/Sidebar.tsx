@@ -167,7 +167,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
     resetAllMockData();
     onClose();
-    window.location.assign(paths.requests);
+    window.location.assign(`${import.meta.env.BASE_URL}requests`);
   };
 
   const initials = getUserInitials(user.name);
@@ -263,7 +263,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     aria-hidden="true"
                   />
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
-                    Dev user switcher
+                    Demo controls
                   </p>
                 </div>
 
@@ -329,7 +329,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
             <div>
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">
-                Dev (temporary)
+                Demo data
               </p>
               <button
                 type="button"

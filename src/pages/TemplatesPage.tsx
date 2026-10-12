@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileStack, Plus, X } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { TemplateFilters } from '@/components/template/TemplateFilters';
 import { TemplateList } from '@/components/template/TemplateList';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
@@ -23,11 +23,20 @@ import {
 } from '@/utils/templateFilters';
 import { userHasRole } from '@/utils/permissions';
 
+function createdTemplateMessage(state: unknown): string | null {
+  if (!state || typeof state !== 'object' || !('message' in state)) return null;
+  const message = state.message;
+  return typeof message === 'string' && message.trim() ? message : null;
+}
+
 export function TemplatesPage() {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<TemplateListFilters>(EMPTY_TEMPLATE_FILTERS);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(() =>
+    createdTemplateMessage(location.state),
+  );
   const [error, setError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -48,6 +57,11 @@ export function TemplatesPage() {
     () => filterTemplates(templates, filters),
     [templates, filters],
   );
+
+  useEffect(() => {
+    if (!createdTemplateMessage(location.state)) return;
+    navigate(paths.templates, { replace: true, state: null });
+  }, [location.state, navigate]);
 
   useEffect(() => {
     if (!previewId) return;
