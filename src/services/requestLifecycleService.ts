@@ -150,7 +150,7 @@ export function resubmitRequest(input: ResubmitRequestInput): LifecycleResult {
 }
 
 /**
- * Cancel a Pending or Returned request. Permanent for this MVP.
+ * Cancel a Pending request. Permanent for this MVP.
  */
 export function cancelRequest(input: CancelRequestInput): LifecycleResult {
   const request = getRequestById(input.requestId);

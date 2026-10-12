@@ -171,16 +171,16 @@ export function ReviewPage() {
           </div>
 
           <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start gap-3">
-              <div className="min-w-0">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="font-mono text-sm text-brand-600">
                   {request.requestNumber}
                 </p>
-                <h1 className="mt-1 text-2xl font-semibold text-brand-900">
-                  {getRequestDisplayTitle(request)}
-                </h1>
+                <RequestStatusBadge status={request.status} />
               </div>
-              <RequestStatusBadge status={request.status} />
+              <h1 className="mt-1 text-2xl font-semibold text-brand-900">
+                {getRequestDisplayTitle(request)}
+              </h1>
             </div>
 
             <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

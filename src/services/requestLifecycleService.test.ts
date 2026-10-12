@@ -121,8 +121,11 @@ describe('requestLifecycleService', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('cancels Pending/Returned and archives the open revision', () => {
-    localStorage.setItem(REQUESTS_KEY, JSON.stringify([returnedRequest()]));
+  it('cancels Pending and archives the open revision', () => {
+    localStorage.setItem(
+      REQUESTS_KEY,
+      JSON.stringify([{ ...returnedRequest(), status: 'Pending' }]),
+    );
     const result = cancelRequest({
       requestId: 'req-life-1',
       actorUserId: 'usr-ana',
@@ -136,8 +139,21 @@ describe('requestLifecycleService', () => {
     expect(result.request.cancellationReason).toBe('No longer needed');
   });
 
-  it('blocks non-owners from cancelling', () => {
+  it('blocks cancel when Returned', () => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify([returnedRequest()]));
+    const result = cancelRequest({
+      requestId: 'req-life-1',
+      actorUserId: 'usr-ana',
+      reason: 'No longer needed',
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('blocks non-owners from cancelling', () => {
+    localStorage.setItem(
+      REQUESTS_KEY,
+      JSON.stringify([{ ...returnedRequest(), status: 'Pending' }]),
+    );
     const result = cancelRequest({
       requestId: 'req-life-1',
       actorUserId: 'usr-carlo',

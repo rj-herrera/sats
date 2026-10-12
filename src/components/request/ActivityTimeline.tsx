@@ -32,7 +32,7 @@ export function ActivityTimeline({ events }: ActivityTimelineProps) {
                   {event.actorName}
                   <span className="mx-1.5 text-brand-300">·</span>
                   {formatDateTime(event.timestamp)}
-                  {event.revisionNumber != null ? (
+                  {event.revisionNumber != null && event.revisionNumber > 1 ? (
                     <>
                       <span className="mx-1.5 text-brand-300">·</span>
                       Rev {event.revisionNumber}

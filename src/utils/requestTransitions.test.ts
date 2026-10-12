@@ -28,9 +28,9 @@ describe('requestTransitions', () => {
     expect(canResubmitFrom('Rejected')).toBe(false);
   });
 
-  it('allows cancel from Pending or Returned', () => {
+  it('allows cancel from Pending only', () => {
     expect(canCancelFrom('Pending')).toBe(true);
-    expect(canCancelFrom('Returned')).toBe(true);
+    expect(canCancelFrom('Returned')).toBe(false);
     expect(canCancelFrom('Approved')).toBe(false);
   });
 
@@ -38,6 +38,7 @@ describe('requestTransitions', () => {
     expect(explainInvalidTransition('Pending', 'Approved')).toBeNull();
     expect(explainInvalidTransition('Returned', 'Pending')).toBeNull();
     expect(explainInvalidTransition('Pending', 'Cancelled')).toBeNull();
+    expect(explainInvalidTransition('Returned', 'Cancelled')).toMatch(/Cannot/);
     expect(explainInvalidTransition('Approved', 'Pending')).toMatch(/Cannot/);
     expect(explainInvalidTransition('Rejected', 'Cancelled')).toMatch(/Cannot/);
   });

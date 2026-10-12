@@ -20,5 +20,5 @@ export function canRequesterCancel(
   request: SubmittedRequest | null | undefined,
 ): boolean {
   if (!isRequestOwner(user, request) || !request) return false;
-  return request.status === 'Pending' || request.status === 'Returned';
+  return request.status === 'Pending';
 }

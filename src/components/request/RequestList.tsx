@@ -24,7 +24,6 @@ export function RequestList({ requests }: RequestListProps) {
                 <th className="px-4 py-3">Template</th>
                 <th className="px-4 py-3">Submitted</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Rev</th>
                 <th className="px-4 py-3 text-center">Action</th>
               </tr>
             </thead>
@@ -52,9 +51,6 @@ export function RequestList({ requests }: RequestListProps) {
                         </span>
                       ) : null}
                     </div>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-brand-700">
-                    {request.revisionNumber}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-center">
                     <Link
@@ -110,12 +106,6 @@ export function RequestList({ requests }: RequestListProps) {
                 <dt>Submitted</dt>
                 <dd className="text-right text-brand-800">
                   {formatDateTime(request.submittedAt)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt>Revision</dt>
-                <dd className="text-right text-brand-800">
-                  {request.revisionNumber}
                 </dd>
               </div>
               {request.status === 'Returned' ? (

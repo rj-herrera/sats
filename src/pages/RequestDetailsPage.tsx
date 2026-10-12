@@ -16,6 +16,7 @@ import { getRequestById } from '@/services/requestRepository';
 import { getTemplateById } from '@/services/templateService';
 import type { SubmittedRequest } from '@/types';
 import { canUserViewRequest } from '@/utils/requestAccess';
+import { canRequesterCancel } from '@/utils/requestOwnership';
 
 export function RequestDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -86,6 +87,7 @@ export function RequestDetailsPage() {
   const activity = request.activity ?? [];
   const isOwner = user?.id === request.requesterId;
   const isReturned = request.status === 'Returned';
+  const showCancel = canRequesterCancel(user, request);
   const showFooterActions = isOwner && isReturned;
 
   const handleConfirmCancel = (reason: string) => {
@@ -118,6 +120,8 @@ export function RequestDetailsPage() {
         <RequestDetailsHeader
           request={request}
           showBackToMyRequests={isOwner}
+          showCancel={showCancel}
+          onCancelClick={openCancel}
         />
 
         {flash ? (
@@ -127,14 +131,6 @@ export function RequestDetailsPage() {
           >
             {flash}
           </div>
-        ) : null}
-
-        {isOwner && !isReturned ? (
-          <RequesterActions
-            user={user}
-            request={request}
-            onCancelClick={openCancel}
-          />
         ) : null}
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -156,12 +152,7 @@ export function RequestDetailsPage() {
 
       {showFooterActions ? (
         <div className="shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6">
-          <RequesterActions
-            variant="footer"
-            user={user}
-            request={request}
-            onCancelClick={openCancel}
-          />
+          <RequesterActions variant="footer" user={user} request={request} />
         </div>
       ) : null}
 

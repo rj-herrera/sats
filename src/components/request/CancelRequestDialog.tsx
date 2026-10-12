@@ -38,6 +38,9 @@ export function CancelRequestDialog({
 
   if (!open) return null;
 
+  const trimmedReason = reason.trim();
+  const canConfirm = trimmedReason.length > 0 && !submitting;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
@@ -69,20 +72,20 @@ export function CancelRequestDialog({
         </div>
 
         <p className="mt-3 text-sm text-brand-600">
-          Cancel <span className="font-mono font-medium">{requestNumber}</span>?
-          Cancellation is permanent in this MVP. The request stays visible in My
-          Requests as Cancelled, but it cannot be edited, resubmitted, or
-          reactivated.
+          Are you sure you want to cancel{' '}
+          <span className="font-mono font-medium">{requestNumber}</span>? This
+          cannot be undone.
         </p>
 
         <label className="mt-4 block">
           <span className="mb-1 block text-sm font-medium text-brand-800">
-            Cancellation reason (optional)
+            Cancellation reason <span className="text-red-600">*</span>
           </span>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
+            required
             disabled={submitting}
             className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             placeholder="Why are you cancelling this request?"
@@ -106,11 +109,11 @@ export function CancelRequestDialog({
           </button>
           <button
             type="button"
-            disabled={submitting}
-            onClick={() => onConfirm(reason)}
-            className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
+            disabled={!canConfirm}
+            onClick={() => onConfirm(trimmedReason)}
+            className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? 'Cancelling…' : 'Confirm cancellation'}
+            {submitting ? 'Cancelling…' : 'Cancel'}
           </button>
         </div>
       </div>
