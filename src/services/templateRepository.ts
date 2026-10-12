@@ -1,4 +1,5 @@
 import { MOCK_TEMPLATES } from '@/data/mockTemplates';
+import { resolveMockUserId } from '@/data/mockUsers';
 import { createTemplateId, normalizeTemplate } from '@/services/templateNormalizer';
 import type { FormTemplate, TemplateStatus, User } from '@/types';
 import {
@@ -37,20 +38,94 @@ function writeAll(templates: FormTemplate[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
 }
 
+function remapTemplateUserIds(template: FormTemplate): FormTemplate {
+  let changed = false;
+  const createdById = resolveMockUserId(template.createdById);
+  const updatedById = resolveMockUserId(template.updatedById);
+  if (createdById !== template.createdById || updatedById !== template.updatedById) {
+    changed = true;
+  }
+
+  let workflow = template.workflow;
+  if (workflow.type === 'hierarchy_approval') {
+    const steps = workflow.steps.map((step) => {
+      const assigneeUserId = resolveMockUserId(step.assigneeUserId);
+      if (assigneeUserId === step.assigneeUserId) return step;
+      changed = true;
+      return { ...step, assigneeUserId };
+    });
+    if (changed) workflow = { ...workflow, steps };
+  }
+
+  if (!changed) return template;
+  return { ...template, createdById, updatedById, workflow };
+}
+
+function hydrateSeedTemplate(
+  template: FormTemplate,
+  seedsById: Map<string, FormTemplate>,
+): FormTemplate {
+  const seed = seedsById.get(template.id);
+  if (!seed) return template;
+
+  let next = template;
+  if (
+    template.createdById !== seed.createdById ||
+    template.createdByName !== seed.createdByName ||
+    template.updatedById !== seed.updatedById ||
+    template.updatedByName !== seed.updatedByName
+  ) {
+    next = {
+      ...next,
+      createdById: seed.createdById,
+      createdByName: seed.createdByName,
+      updatedById: seed.updatedById,
+      updatedByName: seed.updatedByName,
+    };
+  }
+
+  if (
+    seed.workflow.type === 'hierarchy_approval' &&
+    next.workflow.type === 'hierarchy_approval'
+  ) {
+    const currentWorkflow = next.workflow;
+    const seedStepsById = new Map(seed.workflow.steps.map((s) => [s.id, s]));
+    const steps = currentWorkflow.steps.map((step) => {
+      const seedStep = seedStepsById.get(step.id);
+      if (!seedStep || step.assigneeUserId === seedStep.assigneeUserId) return step;
+      return { ...step, assigneeUserId: seedStep.assigneeUserId };
+    });
+    if (steps.some((s, i) => s !== currentWorkflow.steps[i])) {
+      next = {
+        ...next,
+        workflow: { ...currentWorkflow, steps },
+      };
+    }
+  }
+
+  return next;
+}
+
 function ensureSeeded(): FormTemplate[] {
+  const seeds = MOCK_TEMPLATES.map((t) => normalizeTemplate(t)).filter(
+    (t): t is FormTemplate => t !== null,
+  );
+  const seedsById = new Map(seeds.map((t) => [t.id, t]));
+
   const existing = readRaw()
     .map((item) => normalizeTemplate(item))
     .filter((t): t is FormTemplate => t !== null);
 
   if (existing.length > 0) {
-    return existing;
+    const remapped = existing.map((t) => remapTemplateUserIds(t));
+    const hydrated = remapped.map((t) => hydrateSeedTemplate(t, seedsById));
+    const changed = hydrated.some((t, i) => t !== existing[i]);
+    if (changed) writeAll(hydrated);
+    return hydrated;
   }
 
-  const seeded = MOCK_TEMPLATES.map((t) => normalizeTemplate(t)).filter(
-    (t): t is FormTemplate => t !== null,
-  );
-  writeAll(seeded);
-  return seeded;
+  writeAll(seeds);
+  return seeds;
 }
 
 function readAll(): FormTemplate[] {

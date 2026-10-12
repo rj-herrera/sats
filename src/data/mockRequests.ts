@@ -2,9 +2,9 @@ import type { SubmittedRequest } from '@/types';
 
 /**
  * Seed requests shared across Employee and Approver personas.
- * - Requester: Mock Employee (usr-ana) → visible in My Requests
- * - Review / step-1 approver: Mock Approver (usr-edmon) → Action Inbox
- * - Hierarchy step 2: Mock Approver 2 (usr-tagi) → Waiting until step 1 completes
+ * - Requester: Employee 1 (usr-employee-1) → visible in My Requests
+ * - Review / step-1 approver: Approver 1 (usr-approver-1) → Action Inbox
+ * - Hierarchy step 2: Approver 2 (usr-approver-2) → Waiting until step 1 completes
  */
 
 const SEED_TS = '2026-03-15T09:30:00.000Z';
@@ -49,10 +49,10 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
     templateId: 'tpl-general-review',
     templateName: 'For Review/Checking',
     workflowType: 'review_checking',
-    requesterId: 'usr-ana',
-    requesterName: 'Mock Employee',
-    requesterGroupId: 'grp-analysis',
-    requesterGroupName: 'Analysis Group',
+    requesterId: 'usr-employee-1',
+    requesterName: 'Employee 1',
+    requesterGroupId: 'grp-system',
+    requesterGroupName: 'System Group',
     submittedAt: SEED_TS,
     lastResubmittedAt: null,
     fieldValues: {
@@ -72,8 +72,8 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
     ],
     reviewers: [
       {
-        userId: 'usr-edmon',
-        name: 'Mock Approver',
+        userId: 'usr-approver-1',
+        name: 'Approver 1',
         role: 'approver',
         groupName: 'System Group',
         status: 'Pending',
@@ -94,8 +94,8 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
         id: 'evt-seed-submitted',
         type: 'request_submitted',
         timestamp: SEED_TS,
-        actorId: 'usr-ana',
-        actorName: 'Mock Employee',
+        actorId: 'usr-employee-1',
+        actorName: 'Employee 1',
         description: 'Request submitted',
         comment: null,
         relatedStepKey: null,
@@ -109,10 +109,10 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
     templateId: 'tpl-general-review',
     templateName: 'For Review/Checking',
     workflowType: 'review_checking',
-    requesterId: 'usr-ana',
-    requesterName: 'Mock Employee',
-    requesterGroupId: 'grp-analysis',
-    requesterGroupName: 'Analysis Group',
+    requesterId: 'usr-employee-1',
+    requesterName: 'Employee 1',
+    requesterGroupId: 'grp-system',
+    requesterGroupName: 'System Group',
     submittedAt: SEED_TS_IMAGE,
     lastResubmittedAt: null,
     fieldValues: {
@@ -132,8 +132,8 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
     ],
     reviewers: [
       {
-        userId: 'usr-edmon',
-        name: 'Mock Approver',
+        userId: 'usr-approver-1',
+        name: 'Approver 1',
         role: 'approver',
         groupName: 'System Group',
         status: 'Pending',
@@ -154,8 +154,8 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
         id: 'evt-seed-image-submitted',
         type: 'request_submitted',
         timestamp: SEED_TS_IMAGE,
-        actorId: 'usr-ana',
-        actorName: 'Mock Employee',
+        actorId: 'usr-employee-1',
+        actorName: 'Employee 1',
         description: 'Request submitted',
         comment: null,
         relatedStepKey: null,
@@ -169,10 +169,10 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
     templateId: 'tpl-website-access',
     templateName: 'Website Access Request',
     workflowType: 'hierarchy_approval',
-    requesterId: 'usr-ana',
-    requesterName: 'Mock Employee',
-    requesterGroupId: 'grp-analysis',
-    requesterGroupName: 'Analysis Group',
+    requesterId: 'usr-employee-1',
+    requesterName: 'Employee 1',
+    requesterGroupId: 'grp-system',
+    requesterGroupName: 'System Group',
     submittedAt: SEED_TS_HIERARCHY,
     lastResubmittedAt: null,
     fieldValues: {
@@ -180,7 +180,7 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
       website_url: 'https://vendor.example.com',
       access_type: 'Browse / Read-only',
       business_purpose:
-        'Need read-only access to the vendor portal to check delivery schedules and invoice status for the Analysis Group.',
+        'Need read-only access to the vendor portal to check delivery schedules and invoice status for System Group.',
     },
     fieldDefinitions: [
       {
@@ -220,8 +220,8 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
     approvalSteps: [
       {
         stepOrder: 1,
-        userId: 'usr-edmon',
-        name: 'Mock Approver',
+        userId: 'usr-approver-1',
+        name: 'Approver 1',
         roleLabel: 'Approver',
         groupName: 'System Group',
         status: 'Pending',
@@ -230,10 +230,10 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
       },
       {
         stepOrder: 2,
-        userId: 'usr-tagi',
-        name: 'Mock Approver 2',
+        userId: 'usr-approver-2',
+        name: 'Approver 2',
         roleLabel: 'Assistant Manager',
-        groupName: 'System Group',
+        groupName: 'Admin Group',
         status: 'Waiting',
         comments: null,
         actionAt: null,
@@ -251,8 +251,8 @@ export const MOCK_REQUESTS: SubmittedRequest[] = [
         id: 'evt-seed-hierarchy-submitted',
         type: 'request_submitted',
         timestamp: SEED_TS_HIERARCHY,
-        actorId: 'usr-ana',
-        actorName: 'Mock Employee',
+        actorId: 'usr-employee-1',
+        actorName: 'Employee 1',
         description: 'Request submitted',
         comment: null,
         relatedStepKey: null,

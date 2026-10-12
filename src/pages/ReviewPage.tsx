@@ -7,6 +7,7 @@ import { DecisionConfirmationDialog } from '@/components/request/DecisionConfirm
 import { RequestStatusBadge } from '@/components/request/RequestStatusBadge';
 import { ReviewActionPanel } from '@/components/request/ReviewActionPanel';
 import { ReviewerProgress } from '@/components/request/ReviewerProgress';
+import { RevisionHistory } from '@/components/request/RevisionHistory';
 import { SubmittedFieldValues } from '@/components/request/SubmittedFieldValues';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
@@ -231,6 +232,7 @@ export function ReviewPage() {
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           <div className="min-w-0 space-y-6 lg:col-span-2">
             <SubmittedFieldValues request={request} fields={fields} />
+            <RevisionHistory request={request} />
             <ActivityTimeline events={request.activity ?? []} />
           </div>
 

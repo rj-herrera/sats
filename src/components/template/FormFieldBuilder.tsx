@@ -1,7 +1,13 @@
+import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import type { FormFieldDefinition, FormFieldType } from '@/types';
+import { DynamicFormField } from '@/components/request/DynamicFormField';
+import type { FieldValue, FormFieldDefinition, FormFieldType } from '@/types';
 import { FORM_FIELD_TYPES } from '@/types';
 import { createFieldId } from '@/services/templateNormalizer';
+import {
+  getCurrencyFieldMeta,
+  isNumericFieldType,
+} from '@/utils/currencyFields';
 
 interface FormFieldBuilderProps {
   fields: FormFieldDefinition[];
@@ -10,6 +16,9 @@ interface FormFieldBuilderProps {
 }
 
 function fieldTypeLabel(type: FormFieldType): string {
+  const currency = getCurrencyFieldMeta(type);
+  if (currency) return currency.label;
+
   switch (type) {
     case 'textarea':
       return 'Textarea';
@@ -36,6 +45,45 @@ function emptyField(existingIds: string[]): FormFieldDefinition {
     helpText: '',
     options: [],
   };
+}
+
+function defaultPreviewValue(type: FormFieldType): FieldValue {
+  return type === 'checkbox' ? false : '';
+}
+
+function FieldLivePreview({ field }: { field: FormFieldDefinition }) {
+  const [value, setValue] = useState<FieldValue>(() =>
+    defaultPreviewValue(field.type),
+  );
+  const [file, setFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    setValue(defaultPreviewValue(field.type));
+    setFile(null);
+  }, [field.type, field.id]);
+
+  const previewField: FormFieldDefinition = {
+    ...field,
+    id: `preview-${field.id}`,
+    label: field.label.trim() || 'Untitled field',
+  };
+
+  return (
+    <div className="mt-4 border-t border-brand-100 pt-4">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-brand-500">
+        Preview
+      </p>
+      <div className="rounded-md border border-dashed border-brand-200 bg-brand-50/40 p-3">
+        <DynamicFormField
+          field={previewField}
+          value={value}
+          file={file}
+          onChange={setValue}
+          onFileChange={setFile}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function FormFieldBuilder({
@@ -236,7 +284,7 @@ export function FormFieldBuilder({
                   </label>
                 )}
 
-                {field.type === 'number' && (
+                {isNumericFieldType(field.type) && (
                   <>
                     <label className="block">
                       <span className="mb-1 block text-xs font-medium text-brand-600">
@@ -387,6 +435,8 @@ export function FormFieldBuilder({
                   {fieldErrors[field.id]}
                 </p>
               ) : null}
+
+              <FieldLivePreview field={field} />
             </li>
           ))}
         </ul>

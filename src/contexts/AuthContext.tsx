@@ -18,11 +18,13 @@ import type { Role, User } from '@/types';
 interface AuthContextValue {
   user: User;
   isAuthenticated: true;
-  /** Switch mock persona for development/testing. */
+  /** Switch to the default mock user for a role (first in that role's list). */
   switchRole: (role: Role) => void;
+  /** Switch to a specific mock user (same-role or cross-role). */
+  switchUser: (userId: string) => void;
   /** Re-resolve the logged-in user from the directory. */
   refreshUser: () => void;
-  /** @deprecated Prefer switchRole — kept for tests that set a specific user. */
+  /** @deprecated Prefer switchUser — kept for older call sites. */
   login: (userId: string) => void;
 }
 
@@ -31,9 +33,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(() => ensureMockSession());
 
-  const login = useCallback((userId: string) => {
+  const switchUser = useCallback((userId: string) => {
     setUser(loginAsMockUser(userId));
   }, []);
+
+  const login = switchUser;
 
   const switchRole = useCallback((role: Role) => {
     setUser(switchMockRole(role));
@@ -54,10 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated: true,
       switchRole,
+      switchUser,
       refreshUser,
       login,
     }),
-    [user, switchRole, refreshUser, login],
+    [user, switchRole, switchUser, refreshUser, login],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

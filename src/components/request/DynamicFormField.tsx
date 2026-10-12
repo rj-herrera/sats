@@ -1,4 +1,8 @@
 import type { AttachmentMetadata, FieldValue, FormFieldDefinition } from '@/types';
+import {
+  getCurrencyFieldMeta,
+  isNumericFieldType,
+} from '@/utils/currencyFields';
 
 interface DynamicFormFieldProps {
   field: FormFieldDefinition;
@@ -216,6 +220,45 @@ export function DynamicFormField({
     );
   }
 
+  const currency = getCurrencyFieldMeta(field.type);
+
+  if (currency) {
+    const step = currency.fractionDigits === 0 ? '1' : '0.01';
+    return (
+      <div>
+        {label}
+        <div className="relative mt-1.5">
+          <span
+            className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-medium text-brand-600"
+            aria-hidden="true"
+          >
+            {currency.symbol}
+          </span>
+          <input
+            id={inputId}
+            type="number"
+            inputMode="decimal"
+            step={step}
+            className={`${controlClass} mt-0 pl-8`}
+            value={value === null || value === undefined ? '' : String(value)}
+            placeholder={field.placeholder}
+            min={field.min}
+            max={field.max}
+            required={field.required}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onChange(raw === '' ? null : Number(raw));
+            }}
+          />
+        </div>
+        {help}
+        {errorMsg}
+      </div>
+    );
+  }
+
   const inputType =
     field.type === 'number'
       ? 'number'
@@ -241,7 +284,7 @@ export function DynamicFormField({
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy}
         onChange={(e) => {
-          if (field.type === 'number') {
+          if (isNumericFieldType(field.type)) {
             const raw = e.target.value;
             onChange(raw === '' ? null : Number(raw));
             return;

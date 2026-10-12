@@ -117,8 +117,8 @@ export function getUserCompletedDecision(
 }
 
 /**
- * All completed decisions by this user across closed revisions and the current one.
- * Used by Action Inbox Completed Actions so Revision 1 and Revision 2 both appear.
+ * All completed decisions by this user across closed revisions and the current one,
+ * newest first. Callers that need a single list row should take the first entry.
  */
 export function listUserCompletedDecisions(
   request: SubmittedRequest,

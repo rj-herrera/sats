@@ -1,20 +1,32 @@
+import type { ReactNode } from 'react';
 import { matchPath, NavLink, useLocation } from 'react-router-dom';
 import {
+  Building2,
   ClipboardList,
   FilePlus,
   FileStack,
   Inbox,
   Trash2,
+  Users,
   X,
 } from 'lucide-react';
+import { MOCK_USERS, SWITCHER_USERS_BY_ROLE } from '@/data/mockUsers';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { paths } from '@/routes/paths';
 import { resetAllMockData } from '@/services/resetMockData';
 import type { Role } from '@/types';
-import { APP_ROLES } from '@/types';
-import { getPrimaryRoleLabel, getSwitcherRole } from '@/utils/permissions';
+import {
+  getPrimaryRoleLabel,
+  getSwitcherRole,
+} from '@/utils/permissions';
 import { getUserInitials } from '@/utils/userDisplay';
+
+const SWITCHER_ROLE_TABS: ReadonlyArray<{ role: Role; label: string }> = [
+  { role: 'employee', label: 'Employee' },
+  { role: 'approver', label: 'Approver' },
+  { role: 'admin', label: 'Admin' },
+];
 
 interface SidebarProps {
   open: boolean;
@@ -24,7 +36,7 @@ interface SidebarProps {
 interface NavItem {
   to: string;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   badgeCount?: number;
   /** Section-aware active matching for nested request/inbox/template routes. */
   isActiveForPath: (pathname: string) => boolean;
@@ -87,13 +99,28 @@ function NavItemLink({
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { pathname } = useLocation();
-  const { user, switchRole } = useAuth();
+  const { user, switchRole, switchUser } = useAuth();
   const {
     pendingInboxCount,
     showActionInboxInSidebar,
     showTemplatesInSidebar,
     hasManagementSection,
   } = usePermissions();
+
+  const activeSwitcherRole = getSwitcherRole(user) ?? 'employee';
+  const switcherUsers = SWITCHER_USERS_BY_ROLE[activeSwitcherRole]
+    .map((id) => MOCK_USERS.find((u) => u.id === id))
+    .filter((u): u is (typeof MOCK_USERS)[number] => Boolean(u));
+
+  const handleSwitcherRole = (role: Role) => {
+    if (role === activeSwitcherRole) return;
+    switchRole(role);
+  };
+
+  const handleSwitcherUser = (userId: string) => {
+    if (userId === user.id) return;
+    switchUser(userId);
+  };
 
   const workspaceItems: NavItem[] = [
     {
@@ -142,14 +169,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     window.location.assign(paths.requests);
   };
 
-  const handleRoleChange = (value: string) => {
-    if ((APP_ROLES as readonly string[]).includes(value)) {
-      switchRole(value as Role);
-    }
-  };
-
   const initials = getUserInitials(user.name);
-  const switcherValue = getSwitcherRole(user) ?? 'employee';
 
   return (
     <>
@@ -224,43 +244,76 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
           <div className="mt-auto space-y-4 border-t border-white/10 pt-4">
             <div className="px-1">
-              <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">
-                Dev role switcher
-              </p>
-              <div
-                role="group"
-                aria-label="Switch mock role"
-                className="grid grid-cols-3 gap-1 rounded-lg bg-white/10 p-1"
-              >
-                {(
-                  [
-                    { value: 'employee', label: 'Employee' },
-                    { value: 'approver', label: 'Approver' },
-                    { value: 'admin', label: 'Admin' },
-                  ] as const
-                ).map((option) => {
-                  const active = switcherValue === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleRoleChange(option.value)}
-                      aria-pressed={active}
-                      className={[
-                        'rounded-md px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80',
-                        active
-                          ? 'bg-amber-300 text-brand-950 shadow-sm'
-                          : 'bg-transparent text-brand-100 hover:bg-white/15 hover:text-white',
-                      ].join(' ')}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
+              <div className="rounded-xl bg-white/10 p-2.5">
+                <div className="mb-2.5 flex items-center gap-1.5 px-0.5">
+                  <Users
+                    size={14}
+                    className="shrink-0 text-amber-300"
+                    aria-hidden="true"
+                  />
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+                    Dev user switcher
+                  </p>
+                </div>
+
+                <div
+                  role="tablist"
+                  aria-label="Switch role"
+                  className="mb-2 flex items-center justify-between gap-0.5"
+                >
+                  {SWITCHER_ROLE_TABS.map((tab) => {
+                    const active = tab.role === activeSwitcherRole;
+                    return (
+                      <button
+                        key={tab.role}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => handleSwitcherRole(tab.role)}
+                        className={[
+                          'flex-1 rounded-full px-1.5 py-1.5 text-center text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70',
+                          active
+                            ? 'bg-black/45 text-white'
+                            : 'text-brand-300 hover:text-white',
+                        ].join(' ')}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div
+                  role="group"
+                  aria-label={`${SWITCHER_ROLE_TABS.find((t) => t.role === activeSwitcherRole)?.label ?? 'Role'} users`}
+                  className="mb-2 flex gap-1.5"
+                >
+                  {switcherUsers.map((option) => {
+                    const active = user.id === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => handleSwitcherUser(option.id)}
+                        aria-pressed={active}
+                        className={[
+                          'min-w-0 flex-1 truncate rounded-full px-2 py-2 text-center text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70',
+                          active
+                            ? 'bg-amber-300 text-brand-900 shadow-sm'
+                            : 'border border-white/55 bg-white/5 text-white hover:border-amber-200/80 hover:bg-white/10',
+                        ].join(' ')}
+                      >
+                        {option.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-center gap-1.5 px-1 pt-0.5 text-[10px] text-brand-300">
+                  <Building2 size={12} className="shrink-0 opacity-90" aria-hidden="true" />
+                  <span className="truncate">{user.groupName}</span>
+                </div>
               </div>
-              <p className="mt-1.5 px-2 text-[10px] leading-snug text-brand-400">
-                Development only — production uses token-based identity.
-              </p>
             </div>
 
             <div>

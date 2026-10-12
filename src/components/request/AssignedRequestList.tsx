@@ -88,14 +88,8 @@ export function AssignedRequestList(props: AssignedRequestListProps) {
             </thead>
             <tbody className="divide-y divide-brand-100">
               {rows.map(({ request, canAct, decision, actionAt, revisionNumber }) => (
-                <tr
-                  key={
-                    props.mode === 'completed'
-                      ? `${request.id}-r${revisionNumber}-${actionAt}`
-                      : request.id
-                  }
-                  className="hover:bg-brand-100"
-                >
+                <tr key={request.id} className="hover:bg-brand-100">
+
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-brand-800">
                     {request.requestNumber}
                   </td>
@@ -146,11 +140,7 @@ export function AssignedRequestList(props: AssignedRequestListProps) {
       <ul className="space-y-3 md:hidden">
         {rows.map(({ request, canAct, decision, actionAt, revisionNumber }) => (
           <li
-            key={
-              props.mode === 'completed'
-                ? `${request.id}-r${revisionNumber}-${actionAt}`
-                : request.id
-            }
+            key={request.id}
             className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm"
           >
             <div className="flex items-start justify-between gap-3">

@@ -23,10 +23,10 @@ function reviewRequest(): SubmittedRequest {
     templateId: 'tpl-review',
     templateName: 'Review Form',
     workflowType: 'review_checking',
-    requesterId: 'usr-ana',
-    requesterName: 'Mock Employee',
-    requesterGroupId: 'grp-analysis',
-    requesterGroupName: 'Analysis Group',
+    requesterId: 'usr-employee-1',
+    requesterName: 'Employee 1',
+    requesterGroupId: 'grp-system',
+    requesterGroupName: 'System Group',
     submittedAt: '2026-03-01T00:00:00.000Z',
     lastResubmittedAt: null,
     fieldValues: { title: 'Need review' },
@@ -41,17 +41,17 @@ function reviewRequest(): SubmittedRequest {
     attachments: [],
     reviewers: [
       {
-        userId: 'usr-carlo',
-        name: 'Mock Employee 2',
+        userId: 'usr-employee-2',
+        name: 'Employee 2',
         role: 'employee',
-        groupName: 'Piping Group',
+        groupName: 'Admin Group',
         status: 'Pending',
         comments: null,
         actionAt: null,
       },
       {
-        userId: 'usr-edmon',
-        name: 'Mock Approver',
+        userId: 'usr-approver-1',
+        name: 'Approver 1',
         role: 'approver',
         groupName: 'System Group',
         status: 'Pending',
@@ -81,8 +81,8 @@ function hierarchyRequest(): SubmittedRequest {
     approvalSteps: [
       {
         stepOrder: 1,
-        userId: 'usr-edmon',
-        name: 'Mock Approver',
+        userId: 'usr-approver-1',
+        name: 'Approver 1',
         roleLabel: 'Approver',
         groupName: 'System Group',
         status: 'Pending',
@@ -91,10 +91,10 @@ function hierarchyRequest(): SubmittedRequest {
       },
       {
         stepOrder: 2,
-        userId: 'usr-tagi',
-        name: 'Mock Approver 2',
+        userId: 'usr-approver-2',
+        name: 'Approver 2',
         roleLabel: 'Approver',
-        groupName: 'System Group',
+        groupName: 'Admin Group',
         status: 'Waiting',
         comments: null,
         actionAt: null,
@@ -112,7 +112,7 @@ describe('processRequestDecision — review_checking', () => {
     saveRequest(reviewRequest());
     const first = processRequestDecision({
       requestId: 'req-review-1',
-      actorUserId: 'usr-carlo',
+      actorUserId: 'usr-employee-2',
       decision: 'approve',
     });
     expect(first.ok).toBe(true);
@@ -121,7 +121,7 @@ describe('processRequestDecision — review_checking', () => {
 
     const second = processRequestDecision({
       requestId: 'req-review-1',
-      actorUserId: 'usr-edmon',
+      actorUserId: 'usr-approver-1',
       decision: 'approve',
     });
     expect(second.ok).toBe(true);
@@ -133,7 +133,7 @@ describe('processRequestDecision — review_checking', () => {
     saveRequest(reviewRequest());
     const result = processRequestDecision({
       requestId: 'req-review-1',
-      actorUserId: 'usr-carlo',
+      actorUserId: 'usr-employee-2',
       decision: 'reject',
       comment: 'Incomplete',
     });
@@ -146,7 +146,7 @@ describe('processRequestDecision — review_checking', () => {
     saveRequest(reviewRequest());
     const returned = processRequestDecision({
       requestId: 'req-review-1',
-      actorUserId: 'usr-carlo',
+      actorUserId: 'usr-employee-2',
       decision: 'return',
       comment: 'Please revise',
     });
@@ -156,7 +156,7 @@ describe('processRequestDecision — review_checking', () => {
 
     const blocked = processRequestDecision({
       requestId: 'req-review-1',
-      actorUserId: 'usr-edmon',
+      actorUserId: 'usr-approver-1',
       decision: 'approve',
     });
     expect(blocked.ok).toBe(false);
@@ -166,7 +166,7 @@ describe('processRequestDecision — review_checking', () => {
     saveRequest(reviewRequest());
     const result = processRequestDecision({
       requestId: 'req-review-1',
-      actorUserId: 'usr-carlo',
+      actorUserId: 'usr-employee-2',
       decision: 'reject',
       comment: '',
     });
@@ -183,14 +183,14 @@ describe('processRequestDecision — hierarchy_approval', () => {
     saveRequest(hierarchyRequest());
     const blocked = processRequestDecision({
       requestId: 'req-hier-1',
-      actorUserId: 'usr-tagi',
+      actorUserId: 'usr-approver-2',
       decision: 'approve',
     });
     expect(blocked.ok).toBe(false);
 
     const step1 = processRequestDecision({
       requestId: 'req-hier-1',
-      actorUserId: 'usr-edmon',
+      actorUserId: 'usr-approver-1',
       decision: 'approve',
     });
     expect(step1.ok).toBe(true);
@@ -200,7 +200,7 @@ describe('processRequestDecision — hierarchy_approval', () => {
 
     const step2 = processRequestDecision({
       requestId: 'req-hier-1',
-      actorUserId: 'usr-tagi',
+      actorUserId: 'usr-approver-2',
       decision: 'approve',
     });
     expect(step2.ok).toBe(true);
@@ -212,7 +212,7 @@ describe('processRequestDecision — hierarchy_approval', () => {
     saveRequest(hierarchyRequest());
     const result = processRequestDecision({
       requestId: 'req-hier-1',
-      actorUserId: 'usr-edmon',
+      actorUserId: 'usr-approver-1',
       decision: 'return',
       comment: 'Fix amounts',
     });
@@ -222,7 +222,7 @@ describe('processRequestDecision — hierarchy_approval', () => {
 
     const blocked = processRequestDecision({
       requestId: 'req-hier-1',
-      actorUserId: 'usr-tagi',
+      actorUserId: 'usr-approver-2',
       decision: 'approve',
     });
     expect(blocked.ok).toBe(false);

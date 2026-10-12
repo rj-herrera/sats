@@ -1,4 +1,5 @@
 import { MOCK_REQUESTS } from '@/data/mockRequests';
+import { resolveMockUserId } from '@/data/mockUsers';
 import type { CreateRequestInput, SubmittedRequest } from '@/types';
 import {
   buildSubmittedActivity,
@@ -26,23 +27,157 @@ function readRaw(): unknown[] {
   }
 }
 
+function remapRequestUserIds(request: SubmittedRequest): SubmittedRequest {
+  let changed = false;
+  const requesterId = resolveMockUserId(request.requesterId);
+  if (requesterId !== request.requesterId) changed = true;
+
+  const cancelledById = request.cancelledById
+    ? resolveMockUserId(request.cancelledById)
+    : request.cancelledById;
+  if (cancelledById !== request.cancelledById) changed = true;
+
+  const reviewers = request.reviewers?.map((r) => {
+    const userId = resolveMockUserId(r.userId);
+    if (userId === r.userId) return r;
+    changed = true;
+    return { ...r, userId };
+  }) ?? request.reviewers;
+
+  const approvalSteps = request.approvalSteps?.map((s) => {
+    const userId = resolveMockUserId(s.userId);
+    if (userId === s.userId) return s;
+    changed = true;
+    return { ...s, userId };
+  }) ?? request.approvalSteps;
+
+  const activity = request.activity?.map((e) => {
+    const actorId = resolveMockUserId(e.actorId);
+    if (actorId === e.actorId) return e;
+    changed = true;
+    return { ...e, actorId };
+  });
+
+  const revisions = request.revisions?.map((rev) => {
+    let revChanged = false;
+    const submittedById = resolveMockUserId(rev.submittedById);
+    if (submittedById !== rev.submittedById) revChanged = true;
+    const returnedById = rev.returnedById
+      ? resolveMockUserId(rev.returnedById)
+      : rev.returnedById;
+    if (returnedById !== rev.returnedById) revChanged = true;
+    const reviewersSnap = rev.reviewers?.map((r) => {
+      const userId = resolveMockUserId(r.userId);
+      if (userId === r.userId) return r;
+      revChanged = true;
+      return { ...r, userId };
+    }) ?? rev.reviewers;
+    const stepsSnap = rev.approvalSteps?.map((s) => {
+      const userId = resolveMockUserId(s.userId);
+      if (userId === s.userId) return s;
+      revChanged = true;
+      return { ...s, userId };
+    }) ?? rev.approvalSteps;
+    if (!revChanged) return rev;
+    changed = true;
+    return {
+      ...rev,
+      submittedById,
+      returnedById,
+      reviewers: reviewersSnap,
+      approvalSteps: stepsSnap,
+    };
+  });
+
+  if (!changed) return request;
+  return {
+    ...request,
+    requesterId,
+    cancelledById,
+    reviewers: reviewers ?? null,
+    approvalSteps: approvalSteps ?? null,
+    activity,
+    revisions,
+  };
+}
+
 function normalizedSeeds(): SubmittedRequest[] {
   return MOCK_REQUESTS.map((r) => normalizeRequest(r)).filter(
     (r): r is SubmittedRequest => r !== null,
   );
 }
 
-/** Hydrate demo seed fields (e.g. sample attachment) without wiping user edits. */
+/** Hydrate demo seed fields without wiping user workflow progress. */
 function hydrateSeedRequest(
   request: SubmittedRequest,
   seedsById: Map<string, SubmittedRequest>,
 ): SubmittedRequest {
   const seed = seedsById.get(request.id);
   if (!seed) return request;
-  if (request.attachments.length > 0 || seed.attachments.length === 0) {
-    return request;
+
+  let next: SubmittedRequest = request;
+
+  // Refresh identity / group labels from current seed definitions.
+  if (
+    request.requesterId !== seed.requesterId ||
+    request.requesterName !== seed.requesterName ||
+    request.requesterGroupId !== seed.requesterGroupId ||
+    request.requesterGroupName !== seed.requesterGroupName
+  ) {
+    next = {
+      ...next,
+      requesterId: seed.requesterId,
+      requesterName: seed.requesterName,
+      requesterGroupId: seed.requesterGroupId,
+      requesterGroupName: seed.requesterGroupName,
+    };
   }
-  return { ...request, attachments: seed.attachments };
+
+  if (seed.reviewers && next.reviewers) {
+    const seedReviewersById = new Map(seed.reviewers.map((r) => [r.userId, r]));
+    const reviewers = next.reviewers.map((r) => {
+      const seedReviewer = seedReviewersById.get(r.userId);
+      if (
+        !seedReviewer ||
+        (r.name === seedReviewer.name && r.groupName === seedReviewer.groupName)
+      ) {
+        return r;
+      }
+      return {
+        ...r,
+        name: seedReviewer.name,
+        groupName: seedReviewer.groupName,
+      };
+    });
+    if (reviewers.some((r, i) => r !== next.reviewers![i])) {
+      next = { ...next, reviewers };
+    }
+  }
+
+  if (seed.approvalSteps && next.approvalSteps) {
+    const seedStepsByKey = new Map(
+      seed.approvalSteps.map((s) => [`${s.stepOrder}:${s.userId}`, s]),
+    );
+    const approvalSteps = next.approvalSteps.map((s) => {
+      const seedStep = seedStepsByKey.get(`${s.stepOrder}:${s.userId}`);
+      if (
+        !seedStep ||
+        (s.name === seedStep.name && s.groupName === seedStep.groupName)
+      ) {
+        return s;
+      }
+      return { ...s, name: seedStep.name, groupName: seedStep.groupName };
+    });
+    if (approvalSteps.some((s, i) => s !== next.approvalSteps![i])) {
+      next = { ...next, approvalSteps };
+    }
+  }
+
+  if (request.attachments.length === 0 && seed.attachments.length > 0) {
+    next = { ...next, attachments: seed.attachments };
+  }
+
+  return next;
 }
 
 function ensureSeeded(): SubmittedRequest[] {
@@ -53,9 +188,10 @@ function ensureSeeded(): SubmittedRequest[] {
     .filter((r): r is SubmittedRequest => r !== null);
 
   if (existing.length > 0) {
-    const existingIds = new Set(existing.map((r) => r.id));
+    const remapped = existing.map((r) => remapRequestUserIds(r));
+    const existingIds = new Set(remapped.map((r) => r.id));
     const missingSeeds = seeds.filter((r) => !existingIds.has(r.id));
-    const hydrated = existing.map((r) => hydrateSeedRequest(r, seedsById));
+    const hydrated = remapped.map((r) => hydrateSeedRequest(r, seedsById));
     const next = missingSeeds.length > 0 ? [...hydrated, ...missingSeeds] : hydrated;
     const changed =
       missingSeeds.length > 0 ||

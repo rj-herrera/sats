@@ -5,6 +5,7 @@ import type {
   FormTemplate,
 } from '@/types';
 import { resolveHierarchyForTemplate } from '@/services/workflowService';
+import { isNumericFieldType } from '@/utils/currencyFields';
 
 export type FieldErrors = Record<string, string>;
 
@@ -86,7 +87,7 @@ export function validateField(
     return 'Enter a valid URL starting with http:// or https://.';
   }
 
-  if (field.type === 'number') {
+  if (isNumericFieldType(field.type)) {
     const num = typeof value === 'number' ? value : Number(value);
     if (Number.isNaN(num)) {
       return `${field.label} must be a number.`;
@@ -258,7 +259,7 @@ export function emptyValuesForTemplate(
     if (field.defaultValue !== undefined && field.defaultValue !== null) {
       if (field.type === 'checkbox') {
         values[field.id] = Boolean(field.defaultValue);
-      } else if (field.type === 'number') {
+      } else if (isNumericFieldType(field.type)) {
         values[field.id] =
           typeof field.defaultValue === 'number'
             ? field.defaultValue
@@ -274,7 +275,7 @@ export function emptyValuesForTemplate(
       values[field.id] = false;
     } else if (field.type === 'file') {
       values[field.id] = null;
-    } else if (field.type === 'number') {
+    } else if (isNumericFieldType(field.type)) {
       values[field.id] = null;
     } else {
       values[field.id] = '';

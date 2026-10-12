@@ -28,42 +28,45 @@ export function RequestList({ requests }: RequestListProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-100">
-              {requests.map((request) => (
-                <tr key={request.id} className="hover:bg-brand-100">
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-brand-800">
-                    {request.requestNumber}
-                  </td>
-                  <td className="max-w-[16rem] px-4 py-3 font-medium text-brand-900">
-                    <span className="line-clamp-2">
-                      {getRequestDisplayTitle(request)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-brand-700">{request.templateName}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-brand-700">
-                    {formatDateTime(request.submittedAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
+              {requests.map((request) => {
+                const isReturned = request.status === 'Returned';
+                return (
+                  <tr
+                    key={request.id}
+                    className={
+                      isReturned
+                        ? 'bg-red-50 hover:bg-red-100/80'
+                        : 'hover:bg-brand-100'
+                    }
+                  >
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-brand-800">
+                      {request.requestNumber}
+                    </td>
+                    <td className="max-w-[16rem] px-4 py-3 font-medium text-brand-900">
+                      <span className="line-clamp-2">
+                        {getRequestDisplayTitle(request)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-brand-700">{request.templateName}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-brand-700">
+                      {formatDateTime(request.submittedAt)}
+                    </td>
+                    <td className="px-4 py-3">
                       <RequestStatusBadge status={request.status} />
-                      {request.status === 'Returned' ? (
-                        <span className="text-[11px] font-medium text-orange-700">
-                          Action required
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <Link
-                      to={paths.requestDetails(request.id)}
-                      title="View Details"
-                      aria-label="View Details"
-                      className="inline-flex rounded-md p-2 text-brand-700 hover:bg-brand-50 hover:text-brand-900"
-                    >
-                      <Eye size={18} aria-hidden />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                      <Link
+                        to={paths.requestDetails(request.id)}
+                        title="View Details"
+                        aria-label="View Details"
+                        className="inline-flex rounded-md p-2 text-brand-700 hover:bg-brand-50 hover:text-brand-900"
+                      >
+                        <Eye size={18} aria-hidden />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -74,7 +77,12 @@ export function RequestList({ requests }: RequestListProps) {
         {requests.map((request) => (
           <li
             key={request.id}
-            className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm"
+            className={[
+              'rounded-lg border p-4 shadow-sm',
+              request.status === 'Returned'
+                ? 'border-red-200 bg-red-50'
+                : 'border-brand-100 bg-white',
+            ].join(' ')}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -108,11 +116,6 @@ export function RequestList({ requests }: RequestListProps) {
                   {formatDateTime(request.submittedAt)}
                 </dd>
               </div>
-              {request.status === 'Returned' ? (
-                <p className="pt-1 text-[11px] font-medium text-orange-700">
-                  Action required — revise or cancel
-                </p>
-              ) : null}
             </dl>
           </li>
         ))}

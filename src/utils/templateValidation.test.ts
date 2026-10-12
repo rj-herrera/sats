@@ -23,8 +23,8 @@ function baseTemplate(
     name: 'Sample',
     description: 'A sample template',
     scope: 'group',
-    owningGroupId: 'grp-analysis',
-    allowedGroupIds: ['grp-analysis'],
+    owningGroupId: 'grp-system',
+    allowedGroupIds: ['grp-system'],
     fields: [
       {
         id: 'f1',

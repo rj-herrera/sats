@@ -65,7 +65,10 @@ function validateFields(fields: FormFieldDefinition[]): {
       }
     }
 
-    if (field.type === 'number') {
+    if (
+      field.type === 'number' ||
+      field.type.startsWith('currency_')
+    ) {
       if (
         field.min != null &&
         field.max != null &&

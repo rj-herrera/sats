@@ -47,17 +47,20 @@ function ensureSeeded(): User[] {
   if (existing.length > 0) {
     const seedById = new Map(MOCK_USERS.map((u) => [u.id, u]));
     let changed = false;
-    const merged = existing.map((u) => {
-      const seed = seedById.get(u.id);
+
+    // Drop users removed from the mock directory (e.g. old named accounts).
+    const kept = existing.filter((u) => seedById.has(u.id));
+    if (kept.length !== existing.length) changed = true;
+
+    const merged = kept.map((u) => {
+      const seed = seedById.get(u.id)!;
       const groupName = resolveGroupName(u.groupId);
-      if (!seed) {
-        return { ...u, groupName };
-      }
-      // Keep stable IDs; refresh display identity from seed (generic names).
+      // Keep stable IDs; refresh identity + group assignment from seed.
       if (
         u.name !== seed.name ||
         u.email !== seed.email ||
         u.employeeId !== seed.employeeId ||
+        u.groupId !== seed.groupId ||
         u.roles.join() !== seed.roles.join() ||
         u.hasApprovalResponsibility !== seed.hasApprovalResponsibility
       ) {
@@ -67,13 +70,22 @@ function ensureSeeded(): User[] {
           name: seed.name,
           email: seed.email,
           employeeId: seed.employeeId,
+          groupId: seed.groupId,
           roles: seed.roles,
           hasApprovalResponsibility: seed.hasApprovalResponsibility,
-          groupName,
+          groupName: resolveGroupName(seed.groupId),
         };
       }
       return { ...u, groupName };
     });
+
+    const existingIds = new Set(merged.map((u) => u.id));
+    for (const seed of MOCK_USERS) {
+      if (existingIds.has(seed.id)) continue;
+      changed = true;
+      merged.push(normalizeUser(seed, resolveGroupName(seed.groupId))!);
+    }
+
     if (changed) writeAll(merged);
     return merged;
   }

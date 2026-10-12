@@ -22,10 +22,10 @@ function returnedRequest(): SubmittedRequest {
     templateId: 'tpl-1',
     templateName: 'Form',
     workflowType: 'hierarchy_approval',
-    requesterId: 'usr-ana',
-    requesterName: 'Mock Employee',
-    requesterGroupId: 'grp-analysis',
-    requesterGroupName: 'Analysis Group',
+    requesterId: 'usr-employee-1',
+    requesterName: 'Employee 1',
+    requesterGroupId: 'grp-system',
+    requesterGroupName: 'System Group',
     submittedAt: '2026-03-01T00:00:00.000Z',
     lastResubmittedAt: null,
     fieldValues: { title: 'Original' },
@@ -42,8 +42,8 @@ function returnedRequest(): SubmittedRequest {
     approvalSteps: [
       {
         stepOrder: 1,
-        userId: 'usr-edmon',
-        name: 'Mock Approver',
+        userId: 'usr-approver-1',
+        name: 'Approver 1',
         roleLabel: 'Approver',
         groupName: 'System Group',
         status: 'Returned',
@@ -52,10 +52,10 @@ function returnedRequest(): SubmittedRequest {
       },
       {
         stepOrder: 2,
-        userId: 'usr-tagi',
-        name: 'Mock Approver 2',
+        userId: 'usr-approver-2',
+        name: 'Approver 2',
         roleLabel: 'Approver',
-        groupName: 'System Group',
+        groupName: 'Admin Group',
         status: 'Waiting',
         comments: null,
         actionAt: null,
@@ -73,8 +73,8 @@ function returnedRequest(): SubmittedRequest {
         id: 'evt-1',
         type: 'request_returned',
         timestamp: '2026-03-02T00:00:00.000Z',
-        actorId: 'usr-edmon',
-        actorName: 'Mock Approver',
+        actorId: 'usr-approver-1',
+        actorName: 'Approver 1',
         description: 'Returned',
         comment: 'Please revise',
         relatedStepKey: 'step:1',
@@ -94,7 +94,7 @@ describe('requestLifecycleService', () => {
 
     const result = resubmitRequest({
       requestId: 'req-life-1',
-      actorUserId: 'usr-ana',
+      actorUserId: 'usr-employee-1',
       fieldValues: { title: 'Revised title' },
       attachments: [],
     });
@@ -114,7 +114,7 @@ describe('requestLifecycleService', () => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify([returnedRequest()]));
     const result = resubmitRequest({
       requestId: 'req-life-1',
-      actorUserId: 'usr-ana',
+      actorUserId: 'usr-employee-1',
       fieldValues: { title: '' },
       attachments: [],
     });
@@ -128,7 +128,7 @@ describe('requestLifecycleService', () => {
     );
     const result = cancelRequest({
       requestId: 'req-life-1',
-      actorUserId: 'usr-ana',
+      actorUserId: 'usr-employee-1',
       reason: 'No longer needed',
     });
     expect(result.ok).toBe(true);
@@ -143,7 +143,7 @@ describe('requestLifecycleService', () => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify([returnedRequest()]));
     const result = cancelRequest({
       requestId: 'req-life-1',
-      actorUserId: 'usr-ana',
+      actorUserId: 'usr-employee-1',
       reason: 'No longer needed',
     });
     expect(result.ok).toBe(false);
@@ -156,7 +156,7 @@ describe('requestLifecycleService', () => {
     );
     const result = cancelRequest({
       requestId: 'req-life-1',
-      actorUserId: 'usr-carlo',
+      actorUserId: 'usr-employee-2',
     });
     expect(result.ok).toBe(false);
   });

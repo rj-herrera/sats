@@ -19,6 +19,9 @@ export type FormFieldType =
   | 'text'
   | 'textarea'
   | 'number'
+  | 'currency_php'
+  | 'currency_usd'
+  | 'currency_jpy'
   | 'url'
   | 'date'
   | 'select'
@@ -30,6 +33,9 @@ export const FORM_FIELD_TYPES: readonly FormFieldType[] = [
   'text',
   'textarea',
   'number',
+  'currency_php',
+  'currency_usd',
+  'currency_jpy',
   'url',
   'date',
   'select',

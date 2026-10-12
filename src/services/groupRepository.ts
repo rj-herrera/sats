@@ -26,17 +26,45 @@ function writeAll(groups: Group[]): void {
 }
 
 function ensureSeeded(): Group[] {
+  const seeded = MOCK_GROUPS.map((g) => normalizeGroup(g)).filter(
+    (g): g is Group => g !== null,
+  );
   const existing = readRaw()
     .map((item) => normalizeGroup(item))
     .filter((g): g is Group => g !== null);
 
-  if (existing.length > 0) return existing;
+  if (existing.length === 0) {
+    writeAll(seeded);
+    return seeded;
+  }
 
-  const seeded = MOCK_GROUPS.map((g) => normalizeGroup(g)).filter(
-    (g): g is Group => g !== null,
-  );
-  writeAll(seeded);
-  return seeded;
+  const seedById = new Map(seeded.map((g) => [g.id, g]));
+  const kept = existing.filter((g) => seedById.has(g.id));
+  let changed = kept.length !== existing.length;
+
+  const merged = kept.map((g) => {
+    const seed = seedById.get(g.id)!;
+    if (
+      g.name !== seed.name ||
+      g.code !== seed.code ||
+      g.description !== seed.description ||
+      g.status !== seed.status
+    ) {
+      changed = true;
+      return { ...g, ...seed, id: g.id };
+    }
+    return g;
+  });
+
+  const existingIds = new Set(merged.map((g) => g.id));
+  for (const seed of seeded) {
+    if (existingIds.has(seed.id)) continue;
+    changed = true;
+    merged.push(seed);
+  }
+
+  if (changed) writeAll(merged);
+  return merged;
 }
 
 function readAll(): Group[] {

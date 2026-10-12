@@ -1,4 +1,4 @@
-import { ROLE_SWITCHER_USERS } from '@/data/mockUsers';
+import { resolveMockUserId, ROLE_SWITCHER_USERS } from '@/data/mockUsers';
 import { getGroupById } from '@/services/groupRepository';
 import { getUserById } from '@/services/userRepository';
 import type { AuthSession, Role, User } from '@/types';
@@ -18,6 +18,12 @@ export function loadSession(): AuthSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthSession;
     if (!parsed?.userId) return null;
+    const userId = resolveMockUserId(parsed.userId);
+    if (userId !== parsed.userId) {
+      const migrated: AuthSession = { userId };
+      saveSession(migrated);
+      return migrated;
+    }
     return parsed;
   } catch {
     return null;

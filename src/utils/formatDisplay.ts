@@ -1,13 +1,42 @@
 import type { AttachmentMetadata, FieldValue, FormFieldDefinition } from '@/types';
+import {
+  formatCurrencyAmount,
+  isCurrencyFieldType,
+} from '@/utils/currencyFields';
+
+/** Philippine Standard Time — used for all mock UI date/time display. */
+const PH_TIME_ZONE = 'Asia/Manila';
+const PH_LOCALE = 'en-PH';
+
+const dateTimeOptions: Intl.DateTimeFormatOptions = {
+  timeZone: PH_TIME_ZONE,
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+};
+
+const dateOnlyOptions: Intl.DateTimeFormatOptions = {
+  timeZone: PH_TIME_ZONE,
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+};
+
+const timeOnlyOptions: Intl.DateTimeFormatOptions = {
+  timeZone: PH_TIME_ZONE,
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+};
 
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
+  return new Intl.DateTimeFormat(PH_LOCALE, dateTimeOptions).format(date);
 }
 
 /** Tooltip for completed step statuses, e.g. "Approved on Oct 12, 2026 at 10:35 AM". */
@@ -18,15 +47,8 @@ export function formatStepActionTooltip(
   if (!iso) return undefined;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return undefined;
-  const datePart = new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
-  const timePart = new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
+  const datePart = new Intl.DateTimeFormat(PH_LOCALE, dateOnlyOptions).format(date);
+  const timePart = new Intl.DateTimeFormat(PH_LOCALE, timeOnlyOptions).format(date);
   return `${statusLabel} on ${datePart} at ${timePart}`;
 }
 
@@ -34,7 +56,7 @@ export function formatDateOnly(iso: string | null | undefined): string {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+  return new Intl.DateTimeFormat(PH_LOCALE, dateOnlyOptions).format(date);
 }
 
 export function formatFileSize(bytes: number): string {
@@ -113,7 +135,11 @@ export function formatSubmittedFieldValue(
       const local = new Date(y, m - 1, d);
       return {
         kind: 'text',
-        text: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(local),
+        text: new Intl.DateTimeFormat(PH_LOCALE, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }).format(local),
       };
     }
     return { kind: 'text', text: formatDateOnly(raw) };
@@ -129,6 +155,14 @@ export function formatSubmittedFieldValue(
 
   if (field.type === 'number') {
     return { kind: 'text', text: String(value) };
+  }
+
+  if (isCurrencyFieldType(field.type)) {
+    const num = typeof value === 'number' ? value : Number(value);
+    if (Number.isNaN(num)) {
+      return { kind: 'text', text: String(value) };
+    }
+    return { kind: 'text', text: formatCurrencyAmount(field.type, num) };
   }
 
   return { kind: 'text', text: String(value) };

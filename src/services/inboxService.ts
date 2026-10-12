@@ -44,7 +44,9 @@ export function listPendingInboxItems(userId: string): InboxPendingItem[] {
     }))
     .sort((a, b) => {
       if (a.canAct !== b.canAct) return a.canAct ? -1 : 1;
-      return a.request.submittedAt.localeCompare(b.request.submittedAt);
+      const aAt = a.request.lastResubmittedAt ?? a.request.submittedAt;
+      const bAt = b.request.lastResubmittedAt ?? b.request.submittedAt;
+      return bAt.localeCompare(aAt);
     });
 }
 
@@ -53,20 +55,29 @@ export function countActionableInboxItems(userId: string): number {
   return listPendingInboxItems(userId).filter((item) => item.canAct).length;
 }
 
-/** Completed Actions — decisions across all revisions for this user. */
+/**
+ * Completed Actions — one row per request (latest decision by this user).
+ * Older revisions stay in Revision History on the request details page,
+ * matching My Requests (one list row per request number).
+ * Requests still awaiting action stay under Assigned to Me only.
+ */
 export function listCompletedInboxItems(userId: string): InboxCompletedItem[] {
+  const pendingIds = new Set(
+    listPendingInboxItems(userId).map((item) => item.request.id),
+  );
   const items: InboxCompletedItem[] = [];
 
   for (const request of listRequests()) {
-    for (const completed of listUserCompletedDecisions(request, userId)) {
-      items.push({
-        request,
-        decision: completed.label,
-        actionAt: completed.actionAt,
-        comments: completed.comments,
-        revisionNumber: completed.revisionNumber,
-      });
-    }
+    if (pendingIds.has(request.id)) continue;
+    const [latest] = listUserCompletedDecisions(request, userId);
+    if (!latest) continue;
+    items.push({
+      request,
+      decision: latest.label,
+      actionAt: latest.actionAt,
+      comments: latest.comments,
+      revisionNumber: latest.revisionNumber,
+    });
   }
 
   return items.sort((a, b) =>

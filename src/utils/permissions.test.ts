@@ -18,36 +18,36 @@ function userById(id: string): User {
 
 describe('permissions', () => {
   it('gives employees create/view-own only', () => {
-    const ana = userById('usr-ana');
-    const perms = getPermissionsForUser(ana);
+    const employee = userById('usr-employee-1');
+    const perms = getPermissionsForUser(employee);
     expect(perms).toEqual(
       expect.arrayContaining(['requests:create', 'requests:view_own']),
     );
     expect(perms).not.toContain('templates:manage_group');
     expect(perms).not.toContain('templates:manage_generic');
-    expect(canManageTemplates(ana)).toBe(false);
-    expect(getPrimaryRoleLabel(ana)).toBe('Employee');
+    expect(canManageTemplates(employee)).toBe(false);
+    expect(getPrimaryRoleLabel(employee)).toBe('Employee');
   });
 
   it('gives Approvers group template and inbox permissions', () => {
-    const edmon = userById('usr-edmon');
-    expect(hasPermission(edmon, 'templates:manage_group')).toBe(true);
-    expect(hasPermission(edmon, 'inbox:access')).toBe(true);
-    expect(hasPermission(edmon, 'templates:manage_generic')).toBe(false);
-    expect(showTemplatesInSidebar(edmon)).toBe(true);
-    expect(getPrimaryRoleLabel(edmon)).toBe('Approver');
+    const approver = userById('usr-approver-1');
+    expect(hasPermission(approver, 'templates:manage_group')).toBe(true);
+    expect(hasPermission(approver, 'inbox:access')).toBe(true);
+    expect(hasPermission(approver, 'templates:manage_generic')).toBe(false);
+    expect(showTemplatesInSidebar(approver)).toBe(true);
+    expect(getPrimaryRoleLabel(approver)).toBe('Approver');
   });
 
   it('gives Admins generic template rights without inbox by role alone', () => {
-    const dave = userById('usr-dave');
-    expect(hasPermission(dave, 'templates:manage_generic')).toBe(true);
-    expect(hasPermission(dave, 'inbox:access')).toBe(false);
-    expect(canManageTemplates(dave)).toBe(true);
-    expect(getPrimaryRoleLabel(dave)).toBe('Admin');
+    const admin = userById('usr-admin-1');
+    expect(hasPermission(admin, 'templates:manage_generic')).toBe(true);
+    expect(hasPermission(admin, 'inbox:access')).toBe(false);
+    expect(canManageTemplates(admin)).toBe(true);
+    expect(getPrimaryRoleLabel(admin)).toBe('Admin');
   });
 
   it('blocks inactive users from permissions', () => {
-    const inactive: User = { ...userById('usr-ana'), status: 'Inactive' };
+    const inactive: User = { ...userById('usr-employee-1'), status: 'Inactive' };
     expect(hasPermission(inactive, 'requests:create')).toBe(false);
   });
 });
@@ -62,7 +62,7 @@ describe('templatePermissions', () => {
   const otherGroupTemplate = {
     id: 'tpl-2',
     scope: 'group',
-    owningGroupId: 'grp-analysis',
+    owningGroupId: 'grp-admin',
   } as FormTemplate;
 
   const genericTemplate = {
@@ -72,20 +72,20 @@ describe('templatePermissions', () => {
   } as FormTemplate;
 
   it('allows Approvers only their own group templates', () => {
-    const edmon = userById('usr-edmon');
-    expect(canManageTemplate(edmon, groupTemplate)).toBe(true);
-    expect(canManageTemplate(edmon, otherGroupTemplate)).toBe(false);
-    expect(canManageTemplate(edmon, genericTemplate)).toBe(false);
+    const approver = userById('usr-approver-1');
+    expect(canManageTemplate(approver, groupTemplate)).toBe(true);
+    expect(canManageTemplate(approver, otherGroupTemplate)).toBe(false);
+    expect(canManageTemplate(approver, genericTemplate)).toBe(false);
   });
 
   it('allows Admins to manage any template', () => {
-    const dave = userById('usr-dave');
-    expect(canManageTemplate(dave, groupTemplate)).toBe(true);
-    expect(canManageTemplate(dave, genericTemplate)).toBe(true);
+    const admin = userById('usr-admin-1');
+    expect(canManageTemplate(admin, groupTemplate)).toBe(true);
+    expect(canManageTemplate(admin, genericTemplate)).toBe(true);
   });
 
   it('denies Employees template management', () => {
-    const ana = userById('usr-ana');
-    expect(canManageTemplate(ana, groupTemplate)).toBe(false);
+    const employee = userById('usr-employee-1');
+    expect(canManageTemplate(employee, groupTemplate)).toBe(false);
   });
 });

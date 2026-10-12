@@ -2,51 +2,63 @@ import type { Group, Role, User } from '@/types';
 
 /**
  * Seed data — read-only mock directory.
- * Generic names only (no personal names). Stable IDs preserved for existing requests.
- * Role switcher: Employee → usr-employee, Approver → usr-approver, Admin → usr-admin.
+ * Numbered generic users only. Groups: System Group, Admin Group.
  */
 
 const SEED_TS = '2026-01-01T00:00:00.000Z';
 
 export const MOCK_GROUPS: Group[] = [
   {
-    id: 'grp-analysis',
-    name: 'Analysis Group',
-    code: 'ANALYSIS',
-    description: 'Analysis and documentation group',
-    status: 'Active',
-    createdAt: SEED_TS,
-    updatedAt: SEED_TS,
-  },
-  {
-    id: 'grp-piping',
-    name: 'Piping Group',
-    code: 'PIPING',
-    description: 'Piping engineering group',
-    status: 'Active',
-    createdAt: SEED_TS,
-    updatedAt: SEED_TS,
-  },
-  {
     id: 'grp-system',
     name: 'System Group',
     code: 'SYSTEM',
-    description: 'System administration and IT support',
+    description: 'System administration and general operations',
+    status: 'Active',
+    createdAt: SEED_TS,
+    updatedAt: SEED_TS,
+  },
+  {
+    id: 'grp-admin',
+    name: 'Admin Group',
+    code: 'ADMIN',
+    description: 'Administration group for elevated management tasks',
     status: 'Active',
     createdAt: SEED_TS,
     updatedAt: SEED_TS,
   },
 ];
 
+/** Previous mock user IDs → current generic IDs (localStorage migration). */
+export const LEGACY_USER_ID_MAP: Readonly<Record<string, string>> = {
+  'usr-ana': 'usr-employee-1',
+  'usr-carlo': 'usr-employee-2',
+  'usr-edmon': 'usr-approver-1',
+  'usr-tagi': 'usr-approver-2',
+  'usr-dave': 'usr-admin-1',
+};
+
+export function resolveMockUserId(id: string): string {
+  return LEGACY_USER_ID_MAP[id] ?? id;
+}
+
 /**
- * Dev role switcher → stable mock user IDs.
- * Legacy IDs (usr-ana / usr-edmon / usr-dave) are aliases so old localStorage sessions keep working.
+ * Dev identity switcher — users available per persona role.
  */
+export const SWITCHER_USERS_BY_ROLE: Record<
+  'employee' | 'approver' | 'admin',
+  readonly string[]
+> = {
+  employee: ['usr-employee-1', 'usr-employee-2'],
+  approver: ['usr-approver-1', 'usr-approver-2'],
+  admin: ['usr-admin-1'],
+};
+
+/** Default user for each role (first in the switcher list). */
 export const ROLE_SWITCHER_USERS: Record<'employee' | 'approver' | 'admin', string> =
   {
-    employee: 'usr-ana',
-    approver: 'usr-edmon',
-    admin: 'usr-dave',
+    employee: SWITCHER_USERS_BY_ROLE.employee[0],
+    approver: SWITCHER_USERS_BY_ROLE.approver[0],
+    admin: SWITCHER_USERS_BY_ROLE.admin[0],
   };
 
 function user(
@@ -80,58 +92,48 @@ function user(
 
 export const MOCK_USERS: User[] = [
   user({
-    id: 'usr-ana',
+    id: 'usr-employee-1',
     employeeId: 'EMP-001',
-    name: 'Mock Employee',
-    email: 'employee@example.com',
-    groupId: 'grp-analysis',
-    groupName: 'Analysis Group',
+    name: 'Employee 1',
+    email: 'employee1@example.com',
+    groupId: 'grp-system',
+    groupName: 'System Group',
     roles: ['employee'],
   }),
   user({
-    id: 'usr-carlo',
+    id: 'usr-employee-2',
     employeeId: 'EMP-002',
-    name: 'Mock Employee 2',
+    name: 'Employee 2',
     email: 'employee2@example.com',
-    groupId: 'grp-piping',
-    groupName: 'Piping Group',
+    groupId: 'grp-admin',
+    groupName: 'Admin Group',
     roles: ['employee'],
   }),
   user({
-    id: 'usr-dave',
-    employeeId: 'EMP-ADMIN',
-    name: 'Mock Admin',
-    email: 'admin@example.com',
-    groupId: 'grp-system',
-    groupName: 'System Group',
-    roles: ['employee', 'admin'],
-    hasApprovalResponsibility: false,
-  }),
-  user({
-    id: 'usr-edmon',
-    employeeId: 'EMP-APPR',
-    name: 'Mock Approver',
-    email: 'approver@example.com',
+    id: 'usr-approver-1',
+    employeeId: 'EMP-APPR-001',
+    name: 'Approver 1',
+    email: 'approver1@example.com',
     groupId: 'grp-system',
     groupName: 'System Group',
     roles: ['employee', 'approver'],
     hasApprovalResponsibility: true,
   }),
   user({
-    id: 'usr-tagi',
-    employeeId: 'EMP-APPR2',
-    name: 'Mock Approver 2',
+    id: 'usr-approver-2',
+    employeeId: 'EMP-APPR-002',
+    name: 'Approver 2',
     email: 'approver2@example.com',
-    groupId: 'grp-system',
-    groupName: 'System Group',
+    groupId: 'grp-admin',
+    groupName: 'Admin Group',
     roles: ['employee', 'approver'],
     hasApprovalResponsibility: true,
   }),
   user({
-    id: 'usr-julia',
-    employeeId: 'EMP-ADMIN2',
-    name: 'Mock Admin 2',
-    email: 'admin2@example.com',
+    id: 'usr-admin-1',
+    employeeId: 'EMP-ADMIN-001',
+    name: 'Admin 1',
+    email: 'admin1@example.com',
     groupId: 'grp-system',
     groupName: 'System Group',
     roles: ['employee', 'admin'],

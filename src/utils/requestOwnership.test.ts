@@ -7,8 +7,8 @@ import {
 } from '@/utils/requestOwnership';
 import type { SubmittedRequest, User } from '@/types';
 
-const ana = MOCK_USERS.find((u) => u.id === 'usr-ana')!;
-const carlo = MOCK_USERS.find((u) => u.id === 'usr-carlo')!;
+const employee1 = MOCK_USERS.find((u) => u.id === 'usr-employee-1')!;
+const employee2 = MOCK_USERS.find((u) => u.id === 'usr-employee-2')!;
 
 function baseRequest(overrides: Partial<SubmittedRequest> = {}): SubmittedRequest {
   return {
@@ -17,10 +17,10 @@ function baseRequest(overrides: Partial<SubmittedRequest> = {}): SubmittedReques
     templateId: 'tpl-1',
     templateName: 'Test',
     workflowType: 'review_checking',
-    requesterId: ana.id,
-    requesterName: ana.name,
-    requesterGroupId: ana.groupId,
-    requesterGroupName: ana.groupName,
+    requesterId: employee1.id,
+    requesterName: employee1.name,
+    requesterGroupId: employee1.groupId,
+    requesterGroupName: employee1.groupName,
     submittedAt: '2026-01-02T00:00:00.000Z',
     lastResubmittedAt: null,
     fieldValues: {},
@@ -43,26 +43,32 @@ function baseRequest(overrides: Partial<SubmittedRequest> = {}): SubmittedReques
 describe('requestOwnership', () => {
   it('identifies the requester', () => {
     const request = baseRequest();
-    expect(isRequestOwner(ana, request)).toBe(true);
-    expect(isRequestOwner(carlo, request)).toBe(false);
+    expect(isRequestOwner(employee1, request)).toBe(true);
+    expect(isRequestOwner(employee2, request)).toBe(false);
   });
 
   it('allows edit/resubmit only when Returned and owner', () => {
-    expect(canRequesterEditResubmit(ana, baseRequest({ status: 'Returned' }))).toBe(
-      true,
-    );
-    expect(canRequesterEditResubmit(ana, baseRequest({ status: 'Pending' }))).toBe(
-      false,
-    );
     expect(
-      canRequesterEditResubmit(carlo, baseRequest({ status: 'Returned' })),
+      canRequesterEditResubmit(employee1, baseRequest({ status: 'Returned' })),
+    ).toBe(true);
+    expect(
+      canRequesterEditResubmit(employee1, baseRequest({ status: 'Pending' })),
+    ).toBe(false);
+    expect(
+      canRequesterEditResubmit(employee2, baseRequest({ status: 'Returned' })),
     ).toBe(false);
   });
 
   it('allows cancel for Pending owners only', () => {
-    expect(canRequesterCancel(ana, baseRequest({ status: 'Pending' }))).toBe(true);
-    expect(canRequesterCancel(ana, baseRequest({ status: 'Returned' }))).toBe(false);
-    expect(canRequesterCancel(ana, baseRequest({ status: 'Approved' }))).toBe(false);
-    expect(canRequesterCancel(carlo as User, baseRequest())).toBe(false);
+    expect(canRequesterCancel(employee1, baseRequest({ status: 'Pending' }))).toBe(
+      true,
+    );
+    expect(canRequesterCancel(employee1, baseRequest({ status: 'Returned' }))).toBe(
+      false,
+    );
+    expect(canRequesterCancel(employee1, baseRequest({ status: 'Approved' }))).toBe(
+      false,
+    );
+    expect(canRequesterCancel(employee2 as User, baseRequest())).toBe(false);
   });
 });
