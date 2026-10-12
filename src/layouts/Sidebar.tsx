@@ -6,6 +6,7 @@ import {
   FilePlus,
   FileStack,
   Inbox,
+  Layers,
   Trash2,
   Users,
   X,
@@ -188,16 +189,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
       >
-        <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
-          <div>
-            <div className="text-lg font-semibold tracking-wide">SATS</div>
-            <div className="text-[10px] uppercase tracking-wider text-brand-300">
-              Submission & Approval
+        <div className="flex items-start justify-between gap-2 border-b border-white/10 px-3 py-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Layers
+                size={20}
+                strokeWidth={1.75}
+                className="shrink-0 text-white"
+                aria-hidden="true"
+              />
+              <div className="text-lg font-bold leading-none tracking-wide text-white">
+                SATS
+              </div>
+            </div>
+            <div className="mt-1 text-[11px] leading-snug text-brand-300">
+              Submission and Approval Tracking System
             </div>
           </div>
           <button
             type="button"
-            className="rounded p-1 text-brand-200 hover:bg-sidebar-hover hover:text-white lg:hidden"
+            className="shrink-0 rounded p-1 text-brand-200 hover:bg-sidebar-hover hover:text-white lg:hidden"
             onClick={onClose}
             aria-label="Close sidebar"
           >

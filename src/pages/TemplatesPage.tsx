@@ -132,7 +132,6 @@ export function TemplatesPage() {
               Template Management
             </h1>
             <p className="mt-1 text-sm text-brand-600">
-              Create and configure form templates and their approval workflows.
               Showing {filtered.length}
               {filtersActive ? ` of ${templates.length}` : ''} template
               {filtered.length === 1 ? '' : 's'}.
@@ -215,7 +214,7 @@ export function TemplatesPage() {
 
         {previewTemplate
           ? createPortal(
-              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+              <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 p-4">
                 <button
                   type="button"
                   className="absolute inset-0"

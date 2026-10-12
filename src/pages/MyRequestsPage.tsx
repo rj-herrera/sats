@@ -39,7 +39,7 @@ export function MyRequestsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-brand-900">My Requests</h1>
           <p className="mt-1 text-sm text-brand-600">
-            Requests you have submitted. Showing {filtered.length}
+            Showing {filtered.length}
             {filtersActive ? ` of ${myRequests.length}` : ''} request
             {filtered.length === 1 ? '' : 's'}.
           </p>
