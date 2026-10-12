@@ -106,7 +106,7 @@ export function EditRequestPage() {
 
   const returnInfo = getLatestReturnInfo(request);
 
-  const handleResubmit = () => {
+  const handleResubmit = async () => {
     const validation = validateRevisionForm({
       fields,
       values,
@@ -121,33 +121,41 @@ export function EditRequestPage() {
     setSubmitting(true);
     setFormError(null);
 
-    const attachments: AttachmentMetadata[] = fields.flatMap((field) => {
-      if (field.type !== 'file') return [];
-      const newFile = files[field.id];
-      if (newFile) return [buildAttachmentMetadata(field.id, newFile)];
-      if (removedAttachmentFieldIds.has(field.id)) return [];
-      const existing = request.attachments.find((a) => a.fieldId === field.id);
-      return existing ? [existing] : [];
-    });
+    try {
+      const attachments: AttachmentMetadata[] = (
+        await Promise.all(
+          fields.map(async (field) => {
+            if (field.type !== 'file') return [];
+            const newFile = files[field.id];
+            if (newFile) return [await buildAttachmentMetadata(field.id, newFile)];
+            if (removedAttachmentFieldIds.has(field.id)) return [];
+            const existing = request.attachments.find((a) => a.fieldId === field.id);
+            return existing ? [existing] : [];
+          }),
+        )
+      ).flat();
 
-    const result = resubmitRequest({
-      requestId: request.id,
-      actorUserId: user.id,
-      fieldValues: values,
-      attachments,
-    });
+      const result = resubmitRequest({
+        requestId: request.id,
+        actorUserId: user.id,
+        fieldValues: values,
+        attachments,
+      });
 
-    setSubmitting(false);
+      if (!result.ok) {
+        setFormError(result.error);
+        return;
+      }
 
-    if (!result.ok) {
-      setFormError(result.error);
-      return;
+      navigate(paths.requestDetails(result.request.id), {
+        replace: true,
+        state: { resubmitted: true },
+      });
+    } catch {
+      setFormError('Could not prepare the attachment for resubmit. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-
-    navigate(paths.requestDetails(result.request.id), {
-      replace: true,
-      state: { resubmitted: true },
-    });
   };
 
   return (

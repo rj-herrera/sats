@@ -82,9 +82,11 @@ export function formatSubmittedFieldValue(
     if (!attachment) {
       return { kind: 'empty', text: 'Not provided' };
     }
+    const href = attachment.downloadUrl?.trim() || undefined;
     return {
       kind: 'attachment',
       text: `${attachment.fileName} (${formatFileSize(attachment.fileSize)})`,
+      href,
     };
   }
 

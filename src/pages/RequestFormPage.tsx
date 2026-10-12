@@ -85,7 +85,7 @@ export function RequestFormPage() {
     handleReset();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!user || !selectedTemplate) {
       setFormError('Select a template before submitting.');
       return;
@@ -119,11 +119,15 @@ export function RequestFormPage() {
 
     setSubmitting(true);
     try {
-      const attachmentMeta = selectedTemplate.fields.flatMap((field) => {
-        if (field.type !== 'file') return [];
-        const file = files[field.id];
-        return file ? [buildAttachmentMetadata(field.id, file)] : [];
-      });
+      const attachmentMeta = (
+        await Promise.all(
+          selectedTemplate.fields.map(async (field) => {
+            if (field.type !== 'file') return [];
+            const file = files[field.id];
+            return file ? [await buildAttachmentMetadata(field.id, file)] : [];
+          }),
+        )
+      ).flat();
 
       const reviewers =
         selectedTemplate.workflow.type === 'review_checking'

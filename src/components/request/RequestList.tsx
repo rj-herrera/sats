@@ -29,7 +29,7 @@ export function RequestList({ requests }: RequestListProps) {
             </thead>
             <tbody className="divide-y divide-brand-100">
               {requests.map((request) => (
-                <tr key={request.id} className="hover:bg-brand-50/40">
+                <tr key={request.id} className="hover:bg-brand-100">
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-brand-800">
                     {request.requestNumber}
                   </td>

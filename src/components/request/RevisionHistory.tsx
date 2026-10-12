@@ -31,7 +31,7 @@ function HistoricalRevisionCard({
     <div className="rounded-md border border-brand-100">
       <button
         type="button"
-        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-brand-50/50"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-brand-100"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >

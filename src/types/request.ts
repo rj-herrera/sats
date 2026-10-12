@@ -59,6 +59,8 @@ export interface AttachmentMetadata {
   fileName: string;
   fileSize: number;
   fileType: string;
+  /** Optional public/mock URL for open/download in the UI. */
+  downloadUrl?: string | null;
 }
 
 export interface ReviewerSnapshot {

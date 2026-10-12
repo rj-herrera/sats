@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface CancelRequestDialogProps {
@@ -41,8 +42,8 @@ export function CancelRequestDialog({
   const trimmedReason = reason.trim();
   const canConfirm = trimmedReason.length > 0 && !submitting;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <button
         type="button"
         className="absolute inset-0 bg-black/40"
@@ -117,6 +118,7 @@ export function CancelRequestDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

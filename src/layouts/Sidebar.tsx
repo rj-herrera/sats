@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { matchPath, NavLink, useLocation } from 'react-router-dom';
 import {
   ClipboardList,
   FilePlus,
@@ -10,7 +10,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { paths } from '@/routes/paths';
-import { clearAllRequests } from '@/services/requestRepository';
+import { resetAllMockData } from '@/services/resetMockData';
 import type { Role } from '@/types';
 import { APP_ROLES } from '@/types';
 import { getPrimaryRoleLabel, getSwitcherRole } from '@/utils/permissions';
@@ -25,24 +25,54 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ReactNode;
-  end?: boolean;
   badgeCount?: number;
+  /** Section-aware active matching for nested request/inbox/template routes. */
+  isActiveForPath: (pathname: string) => boolean;
 }
 
-function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+function isMyRequestsSection(pathname: string): boolean {
+  if (pathname === paths.requests) return true;
+  if (pathname === paths.requestNew) return false;
+  if (matchPath({ path: '/requests/:id/review', end: true }, pathname)) return false;
+  if (matchPath({ path: '/requests/:id/edit', end: true }, pathname)) return true;
+  return Boolean(matchPath({ path: '/requests/:id', end: true }, pathname));
+}
+
+function isActionInboxSection(pathname: string): boolean {
+  if (pathname === paths.inbox || pathname.startsWith(`${paths.inbox}/`)) {
+    return true;
+  }
+  return Boolean(matchPath({ path: '/requests/:id/review', end: true }, pathname));
+}
+
+function isTemplatesSection(pathname: string): boolean {
+  if (pathname === paths.templates || pathname === paths.templateNew) return true;
+  return Boolean(matchPath({ path: '/templates/:id/edit', end: true }, pathname));
+}
+
+function NavItemLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const isActive = item.isActiveForPath(pathname);
+
   return (
     <NavLink
       to={item.to}
-      end={item.end}
+      end
       onClick={onNavigate}
-      className={({ isActive }) =>
-        [
-          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
-          isActive
-            ? 'bg-sidebar-active text-white'
-            : 'text-brand-100 hover:bg-sidebar-hover hover:text-white',
-        ].join(' ')
-      }
+      aria-current={isActive ? 'page' : undefined}
+      className={[
+        'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
+        isActive
+          ? 'bg-sidebar-active text-white'
+          : 'text-brand-100 hover:bg-sidebar-hover hover:text-white',
+      ].join(' ')}
     >
       <span className="shrink-0 opacity-90">{item.icon}</span>
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -56,6 +86,7 @@ function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
 }
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+  const { pathname } = useLocation();
   const { user, switchRole } = useAuth();
   const {
     pendingInboxCount,
@@ -69,12 +100,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       to: paths.requestNew,
       label: 'New Request',
       icon: <FilePlus size={18} />,
+      isActiveForPath: (path) => path === paths.requestNew,
     },
     {
       to: paths.requests,
       label: 'My Requests',
       icon: <ClipboardList size={18} />,
-      end: true,
+      isActiveForPath: isMyRequestsSection,
     },
   ];
 
@@ -86,6 +118,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       label: 'Action Inbox',
       icon: <Inbox size={18} />,
       badgeCount: pendingInboxCount,
+      isActiveForPath: isActionInboxSection,
     });
   }
 
@@ -94,17 +127,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       to: paths.templates,
       label: 'Templates',
       icon: <FileStack size={18} />,
-      end: true,
+      isActiveForPath: isTemplatesSection,
     });
   }
 
-  const handleClearMockRequests = () => {
+  const handleResetMockData = () => {
     const confirmed = window.confirm(
-      'Clear all mock requests stored in this browser? This cannot be undone.',
+      'Reset all mock/test data to the initial seed state?\n\nThis clears requests, templates, and related demo data created or changed during testing. Your current role switcher selection is kept. This cannot be undone.',
     );
     if (!confirmed) return;
 
-    clearAllRequests();
+    resetAllMockData();
     onClose();
     window.location.assign(paths.requests);
   };
@@ -159,7 +192,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </p>
             <div className="flex flex-col gap-0.5">
               {workspaceItems.map((item) => (
-                <NavItemLink key={item.to} item={item} onNavigate={onClose} />
+                <NavItemLink
+                  key={item.to}
+                  item={item}
+                  pathname={pathname}
+                  onNavigate={onClose}
+                />
               ))}
             </div>
           </div>
@@ -173,7 +211,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </div>
               <div className="flex flex-col gap-0.5">
                 {managementItems.map((item) => (
-                  <NavItemLink key={item.to} item={item} onNavigate={onClose} />
+                  <NavItemLink
+                    key={item.to}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={onClose}
+                  />
                 ))}
               </div>
             </div>
@@ -207,7 +250,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         'rounded-md px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80',
                         active
                           ? 'bg-amber-300 text-brand-950 shadow-sm'
-                          : 'bg-transparent text-brand-100 hover:bg-white/10 hover:text-white',
+                          : 'bg-transparent text-brand-100 hover:bg-white/15 hover:text-white',
                       ].join(' ')}
                     >
                       {option.label}
@@ -227,10 +270,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-amber-100 transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                onClick={handleClearMockRequests}
+                onClick={handleResetMockData}
               >
                 <Trash2 size={18} className="shrink-0 opacity-90" aria-hidden="true" />
-                Clear mock requests
+                Reset mock data
               </button>
             </div>
           </div>

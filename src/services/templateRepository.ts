@@ -332,7 +332,7 @@ export function duplicateTemplate(
   });
 }
 
-/** Dev helper */
+/** Dev helper — prefer resetAllMockData() for a full seed restore. */
 export function clearAllTemplates(): void {
   localStorage.removeItem(STORAGE_KEY);
 }

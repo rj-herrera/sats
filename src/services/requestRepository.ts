@@ -1,4 +1,4 @@
-import { MOCK_REQUESTS, SEED_REQUEST_ID } from '@/data/mockRequests';
+import { MOCK_REQUESTS } from '@/data/mockRequests';
 import type { CreateRequestInput, SubmittedRequest } from '@/types';
 import {
   buildSubmittedActivity,
@@ -26,29 +26,46 @@ function readRaw(): unknown[] {
   }
 }
 
+function normalizedSeeds(): SubmittedRequest[] {
+  return MOCK_REQUESTS.map((r) => normalizeRequest(r)).filter(
+    (r): r is SubmittedRequest => r !== null,
+  );
+}
+
+/** Hydrate demo seed fields (e.g. sample attachment) without wiping user edits. */
+function hydrateSeedRequest(
+  request: SubmittedRequest,
+  seedsById: Map<string, SubmittedRequest>,
+): SubmittedRequest {
+  const seed = seedsById.get(request.id);
+  if (!seed) return request;
+  if (request.attachments.length > 0 || seed.attachments.length === 0) {
+    return request;
+  }
+  return { ...request, attachments: seed.attachments };
+}
+
 function ensureSeeded(): SubmittedRequest[] {
+  const seeds = normalizedSeeds();
+  const seedsById = new Map(seeds.map((r) => [r.id, r]));
   const existing = readRaw()
     .map((item) => normalizeRequest(item))
     .filter((r): r is SubmittedRequest => r !== null);
 
   if (existing.length > 0) {
-    // Keep user-created data; only inject the demo seed if it was never added.
-    if (existing.some((r) => r.id === SEED_REQUEST_ID)) {
-      return existing;
-    }
-    const seeded = MOCK_REQUESTS.map((r) => normalizeRequest(r)).filter(
-      (r): r is SubmittedRequest => r !== null,
-    );
-    const next = [...existing, ...seeded];
-    writeAll(next);
+    const existingIds = new Set(existing.map((r) => r.id));
+    const missingSeeds = seeds.filter((r) => !existingIds.has(r.id));
+    const hydrated = existing.map((r) => hydrateSeedRequest(r, seedsById));
+    const next = missingSeeds.length > 0 ? [...hydrated, ...missingSeeds] : hydrated;
+    const changed =
+      missingSeeds.length > 0 ||
+      hydrated.some((req, index) => req !== existing[index]);
+    if (changed) writeAll(next);
     return next;
   }
 
-  const seeded = MOCK_REQUESTS.map((r) => normalizeRequest(r)).filter(
-    (r): r is SubmittedRequest => r !== null,
-  );
-  writeAll(seeded);
-  return seeded;
+  writeAll(seeds);
+  return seeds;
 }
 
 function readAll(): SubmittedRequest[] {
@@ -83,7 +100,7 @@ function nextRequestNumber(existing: SubmittedRequest[]): string {
   return `${prefix}${String(next).padStart(6, '0')}`;
 }
 
-/** Temporary dev helper — removes all mock requests from localStorage. */
+/** Temporary dev helper — removes mock requests from localStorage. Prefer resetAllMockData(). */
 export function clearAllRequests(): void {
   localStorage.removeItem(STORAGE_KEY);
 }

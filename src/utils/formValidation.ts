@@ -122,15 +122,28 @@ export function validateField(
   return null;
 }
 
-export function buildAttachmentMetadata(
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () =>
+      reject(reader.error ?? new Error('Could not read the selected file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Builds attachment metadata and embeds file bytes as a data URL for mock preview/download. */
+export async function buildAttachmentMetadata(
   fieldId: string,
   file: File,
-): AttachmentMetadata {
+): Promise<AttachmentMetadata> {
+  const downloadUrl = await readFileAsDataUrl(file);
   return {
     fieldId,
     fileName: file.name,
     fileSize: file.size,
     fileType: file.type || 'application/octet-stream',
+    downloadUrl,
   };
 }
 

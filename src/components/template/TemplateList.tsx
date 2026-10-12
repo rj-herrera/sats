@@ -42,7 +42,7 @@ export function TemplateList({
             </thead>
             <tbody className="divide-y divide-brand-100">
               {templates.map((template) => (
-                <tr key={template.id} className="hover:bg-brand-50/40">
+                <tr key={template.id} className="hover:bg-brand-100">
                   <td className="max-w-[16rem] px-4 py-3">
                     <p className="font-medium text-brand-900">{template.name}</p>
                     <p className="mt-0.5 line-clamp-2 text-xs text-brand-500">

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { AttachmentMetadata, FormFieldDefinition, SubmittedRequest } from '@/types';
 import { formatSubmittedFieldValue } from '@/utils/formatDisplay';
+import { FileViewerDialog } from './FileViewerDialog';
 
 interface SubmittedFieldValuesProps {
   request: Pick<SubmittedRequest, 'fieldValues' | 'attachments'>;
@@ -19,6 +21,9 @@ export function SubmittedFieldValues({
   fields,
   title = 'Submitted information',
 }: SubmittedFieldValuesProps) {
+  const [viewerAttachment, setViewerAttachment] =
+    useState<AttachmentMetadata | null>(null);
+
   if (fields.length === 0) {
     return (
       <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
@@ -46,40 +51,57 @@ export function SubmittedFieldValues({
   }
 
   return (
-    <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-semibold text-brand-900">{title}</h2>
+    <>
+      <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-brand-900">{title}</h2>
 
-      <dl className="mt-5 divide-y divide-brand-100">
-        {fields.map((field) => {
-          const display = formatSubmittedFieldValue(
-            field,
-            request.fieldValues[field.id],
-            attachmentForField(request.attachments, field.id),
-          );
+        <dl className="mt-5 divide-y divide-brand-100">
+          {fields.map((field) => {
+            const attachment = attachmentForField(request.attachments, field.id);
+            const display = formatSubmittedFieldValue(
+              field,
+              request.fieldValues[field.id],
+              attachment,
+            );
 
-          return (
-            <div key={field.id} className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
-              <dt className="text-sm font-medium text-brand-700">{field.label}</dt>
-              <dd className="text-sm text-brand-900 sm:col-span-2">
-                {display.kind === 'empty' ? (
-                  <span className="italic text-brand-400">{display.text}</span>
-                ) : display.kind === 'url' && display.href ? (
-                  <a
-                    href={display.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="break-all text-brand-800 underline hover:text-brand-950"
-                  >
-                    {display.text}
-                  </a>
-                ) : (
-                  <span className="whitespace-pre-wrap break-word">{display.text}</span>
-                )}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    </section>
+            return (
+              <div key={field.id} className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+                <dt className="text-sm font-medium text-brand-700">{field.label}</dt>
+                <dd className="text-sm text-brand-900 sm:col-span-2">
+                  {display.kind === 'empty' ? (
+                    <span className="italic text-brand-400">{display.text}</span>
+                  ) : display.kind === 'attachment' && attachment ? (
+                    <button
+                      type="button"
+                      onClick={() => setViewerAttachment(attachment)}
+                      className="break-all text-left text-brand-800 underline hover:text-brand-950"
+                    >
+                      {display.text}
+                    </button>
+                  ) : display.kind === 'url' && display.href ? (
+                    <a
+                      href={display.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-brand-800 underline hover:text-brand-950"
+                    >
+                      {display.text}
+                    </a>
+                  ) : (
+                    <span className="whitespace-pre-wrap break-word">{display.text}</span>
+                  )}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </section>
+
+      <FileViewerDialog
+        open={viewerAttachment != null}
+        attachment={viewerAttachment}
+        onClose={() => setViewerAttachment(null)}
+      />
+    </>
   );
 }

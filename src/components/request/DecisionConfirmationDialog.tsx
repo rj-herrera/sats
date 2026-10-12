@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import type { DecisionType } from '@/types';
 
@@ -33,8 +34,7 @@ function decisionCopy(decision: DecisionType) {
     case 'return':
       return {
         title: 'Return for revision',
-        summary:
-          'Returning pauses the workflow for the requester. Describe what needs to be corrected.',
+        summary: 'Return this request so the requester can revise it.',
         commentLabel: 'Revision notes (required)',
         confirmLabel: 'Confirm return',
         requireComment: true,
@@ -72,8 +72,8 @@ export function DecisionConfirmationDialog({
 
   const copy = decisionCopy(decision);
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <button
         type="button"
         className="absolute inset-0 bg-black/40"
@@ -152,6 +152,7 @@ export function DecisionConfirmationDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

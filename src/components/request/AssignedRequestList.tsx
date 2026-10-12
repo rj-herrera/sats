@@ -94,7 +94,7 @@ export function AssignedRequestList(props: AssignedRequestListProps) {
                       ? `${request.id}-r${revisionNumber}-${actionAt}`
                       : request.id
                   }
-                  className="hover:bg-brand-50/40"
+                  className="hover:bg-brand-100"
                 >
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-brand-800">
                     {request.requestNumber}
