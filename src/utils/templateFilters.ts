@@ -1,8 +1,7 @@
-import type { FormTemplate, TemplateScope, TemplateStatus, WorkflowType } from '@/types';
+import type { FormTemplate, TemplateScope, TemplateStatus } from '@/types';
 
 export interface TemplateListFilters {
   search: string;
-  workflowType: WorkflowType | 'all';
   scope: TemplateScope | 'all';
   status: TemplateStatus | 'all';
   groupId: string | 'all';
@@ -10,7 +9,6 @@ export interface TemplateListFilters {
 
 export const EMPTY_TEMPLATE_FILTERS: TemplateListFilters = {
   search: '',
-  workflowType: 'all',
   scope: 'all',
   status: 'all',
   groupId: 'all',
@@ -23,9 +21,6 @@ export function filterTemplates(
   const q = filters.search.trim().toLowerCase();
 
   return templates.filter((template) => {
-    if (filters.workflowType !== 'all' && template.workflow.type !== filters.workflowType) {
-      return false;
-    }
     if (filters.scope !== 'all' && template.scope !== filters.scope) {
       return false;
     }
@@ -50,7 +45,6 @@ export function filterTemplates(
 export function hasActiveTemplateFilters(filters: TemplateListFilters): boolean {
   return (
     filters.search.trim() !== '' ||
-    filters.workflowType !== 'all' ||
     filters.scope !== 'all' ||
     filters.status !== 'all' ||
     filters.groupId !== 'all'

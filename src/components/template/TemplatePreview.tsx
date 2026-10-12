@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Info } from 'lucide-react';
 import { ApprovalWorkflowPreview } from '@/components/request/ApprovalWorkflowPreview';
 import { DynamicRequestForm } from '@/components/request/DynamicRequestForm';
 import { resolveHierarchyWorkflow } from '@/services/workflowService';
@@ -10,9 +11,14 @@ import { TemplateStatusBadge } from './TemplateStatusBadge';
 
 interface TemplatePreviewProps {
   template: FormTemplate;
+  /** When false, the preview notice is omitted (e.g. shown in a modal header instead). */
+  showNotice?: boolean;
 }
 
-export function TemplatePreview({ template }: TemplatePreviewProps) {
+export function TemplatePreview({
+  template,
+  showNotice = true,
+}: TemplatePreviewProps) {
   const [values, setValues] = useState<Record<string, FieldValue>>(() =>
     emptyValuesForTemplate(template),
   );
@@ -25,17 +31,37 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
 
   return (
     <section className="space-y-4">
-      <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
-        <strong>Preview mode</strong> — this does not create or submit a request.
-      </div>
+      {showNotice ? (
+        <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-950">
+          Preview mode
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-semibold text-brand-900">{template.name}</h2>
-            <p className="mt-1 text-sm text-brand-600">
-              {template.description || 'No description'}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-semibold text-brand-900">
+                {template.name}
+              </h2>
+              {template.description.trim() ? (
+                <span className="group relative inline-flex">
+                  <button
+                    type="button"
+                    className="rounded-full p-0.5 text-brand-500 hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
+                    aria-label="Template description"
+                  >
+                    <Info size={18} aria-hidden />
+                  </button>
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-72 -translate-x-1/2 rounded-md border border-brand-200 bg-white px-3 py-2 text-left text-xs leading-relaxed text-brand-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 sm:w-80"
+                  >
+                    {template.description}
+                  </span>
+                </span>
+              ) : null}
+            </div>
           </div>
           <TemplateStatusBadge status={template.status} />
         </div>

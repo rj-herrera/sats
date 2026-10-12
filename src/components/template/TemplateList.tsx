@@ -1,4 +1,4 @@
-import { Copy, Eye, Pencil, Power, PowerOff } from 'lucide-react';
+import { Eye, Pencil, Power, PowerOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { FormTemplate } from '@/types';
 import { paths } from '@/routes/paths';
@@ -11,7 +11,6 @@ interface TemplateListProps {
   templates: FormTemplate[];
   onActivate: (id: string) => void;
   onDeactivate: (id: string) => void;
-  onDuplicate: (id: string) => void;
   onPreview: (id: string) => void;
 }
 
@@ -19,7 +18,6 @@ export function TemplateList({
   templates,
   onActivate,
   onDeactivate,
-  onDuplicate,
   onPreview,
 }: TemplateListProps) {
   if (templates.length === 0) return null;
@@ -37,7 +35,7 @@ export function TemplateList({
                 <th className="px-4 py-3">Workflow</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Updated</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-100">
@@ -65,7 +63,7 @@ export function TemplateList({
                     {formatDateTime(template.updatedAt)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-center gap-1">
                       <button
                         type="button"
                         title="Preview"
@@ -83,15 +81,6 @@ export function TemplateList({
                       >
                         <Pencil size={16} />
                       </Link>
-                      <button
-                        type="button"
-                        title="Duplicate"
-                        aria-label="Duplicate"
-                        onClick={() => onDuplicate(template.id)}
-                        className="rounded-md p-2 text-brand-700 hover:bg-brand-50"
-                      >
-                        <Copy size={16} />
-                      </button>
                       {template.status === 'Active' ? (
                         <button
                           type="button"
@@ -165,13 +154,6 @@ export function TemplateList({
               >
                 Edit
               </Link>
-              <button
-                type="button"
-                onClick={() => onDuplicate(template.id)}
-                className="rounded-md border border-brand-200 px-3 py-1.5 text-xs font-medium text-brand-800"
-              >
-                Duplicate
-              </button>
               {template.status === 'Active' ? (
                 <button
                   type="button"

@@ -41,7 +41,7 @@ function baseTemplate(
 }
 
 describe('templateValidation', () => {
-  it('requires a name even for drafts', () => {
+  it('requires a name for basic validation', () => {
     const result = validateTemplateDraft(baseTemplate({ name: '  ' }));
     expect(result.valid).toBe(false);
   });

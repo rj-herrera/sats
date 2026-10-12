@@ -167,7 +167,7 @@ function validateWorkflow(workflow: TemplateWorkflow): {
   return { errors, warnings };
 }
 
-/** Soft validation for drafts — name required; other issues are warnings. */
+/** Basic validation used while stepping through the editor (name / owning group). */
 export function validateTemplateDraft(
   template: Pick<
     FormTemplate,

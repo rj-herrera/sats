@@ -1,10 +1,5 @@
 import { MOCK_TEMPLATES } from '@/data/mockTemplates';
-import {
-  createFieldId,
-  createStepId,
-  createTemplateId,
-  normalizeTemplate,
-} from '@/services/templateNormalizer';
+import { createTemplateId, normalizeTemplate } from '@/services/templateNormalizer';
 import type { FormTemplate, TemplateStatus, User } from '@/types';
 import {
   canCreateGenericTemplate,
@@ -124,20 +119,8 @@ export function createTemplate(
     owningGroupId = null;
   }
 
-  const draftCheck = validateTemplateDraft({
-    name: input.name,
-    scope,
-    owningGroupId,
-    allowedGroupIds,
-    fields: input.fields,
-    workflow: input.workflow,
-  });
-  if (!draftCheck.valid) {
-    return { ok: false, error: draftCheck.errors.join(' ') };
-  }
-
   const now = new Date().toISOString();
-  const status = input.status ?? 'Draft';
+  const status = input.status ?? 'Active';
 
   if (status === 'Active') {
     const activation = validateTemplateForActivation({
@@ -151,6 +134,18 @@ export function createTemplate(
     });
     if (!activation.valid) {
       return { ok: false, error: activation.errors.join(' ') };
+    }
+  } else {
+    const basics = validateTemplateDraft({
+      name: input.name,
+      scope,
+      owningGroupId,
+      allowedGroupIds,
+      fields: input.fields,
+      workflow: input.workflow,
+    });
+    if (!basics.valid) {
+      return { ok: false, error: basics.errors.join(' ') };
     }
   }
 
@@ -275,61 +270,6 @@ export function setTemplateStatus(
   status: TemplateStatus,
 ): TemplateMutationResult {
   return updateTemplate(actor, templateId, { status });
-}
-
-export function duplicateTemplate(
-  actor: User,
-  templateId: string,
-): TemplateMutationResult {
-  const source = getStoredTemplateById(templateId);
-  if (!source) {
-    return { ok: false, error: 'Template not found.' };
-  }
-  if (!canManageTemplate(actor, source)) {
-    return {
-      ok: false,
-      error: 'You do not have permission to duplicate this template.',
-    };
-  }
-
-  const fieldIds: string[] = [];
-  const fields = source.fields.map((field) => {
-    const id = createFieldId(fieldIds);
-    fieldIds.push(id);
-    return { ...field, id };
-  });
-
-  const workflow =
-    source.workflow.type === 'hierarchy_approval'
-      ? {
-          type: 'hierarchy_approval' as const,
-          steps: source.workflow.steps.map((step) => ({
-            ...step,
-            id: createStepId(),
-          })),
-        }
-      : { type: 'review_checking' as const };
-
-  let scope = source.scope;
-  let owningGroupId = source.owningGroupId;
-  let allowedGroupIds = [...source.allowedGroupIds];
-
-  if (!canCreateGenericTemplate(actor)) {
-    scope = 'group';
-    owningGroupId = actor.groupId;
-    allowedGroupIds = [actor.groupId];
-  }
-
-  return createTemplate(actor, {
-    name: `${source.name} (Copy)`,
-    description: source.description,
-    scope,
-    owningGroupId,
-    allowedGroupIds,
-    fields,
-    workflow,
-    status: 'Draft',
-  });
 }
 
 /** Dev helper — prefer resetAllMockData() for a full seed restore. */

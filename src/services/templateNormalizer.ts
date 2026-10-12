@@ -94,12 +94,14 @@ function normalizeWorkflow(raw: unknown): TemplateWorkflow {
 }
 
 function resolveStatus(raw: Partial<FormTemplate> & { active?: boolean }): TemplateStatus {
+  // Legacy Draft records are treated as Inactive until explicitly activated.
+  if ((raw.status as string | undefined) === 'Draft') return 'Inactive';
   if (isTemplateStatus(raw.status)) return raw.status;
   // Legacy Phase 2–5: boolean active
   if (typeof raw.active === 'boolean') {
     return raw.active ? 'Active' : 'Inactive';
   }
-  return 'Draft';
+  return 'Inactive';
 }
 
 /**

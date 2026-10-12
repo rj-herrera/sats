@@ -77,7 +77,7 @@ function buildInitialState(user: User, existing?: FormTemplate): EditorState {
     allowedGroupIds: [user.groupId],
     fields: [],
     workflow: { type: 'review_checking' },
-    status: 'Draft',
+    status: 'Active',
   };
 }
 
@@ -207,6 +207,7 @@ export function TemplateEditorPage() {
     setMessage(null);
     setFieldErrors({});
 
+    // Templates are only persisted when activated (or saved as Inactive when editing).
     if (status === 'Active') {
       const activation = validateTemplateForActivation(state);
       setWarnings(activation.warnings);
@@ -220,10 +221,10 @@ export function TemplateEditorPage() {
         return;
       }
     } else {
-      const draftCheck = validateTemplateDraft(state);
-      if (!draftCheck.valid) {
+      const basics = validateTemplateDraft(state);
+      if (!basics.valid) {
         setSaving(false);
-        setError(draftCheck.errors.join(' '));
+        setError(basics.errors.join(' '));
         setStepIndex(0);
         return;
       }
@@ -262,9 +263,7 @@ export function TemplateEditorPage() {
     setMessage(
       status === 'Active'
         ? 'Template saved and activated.'
-        : status === 'Inactive'
-          ? 'Template saved as Inactive.'
-          : 'Draft saved.',
+        : 'Template saved as Inactive.',
     );
 
     if (isNew) {

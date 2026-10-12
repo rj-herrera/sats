@@ -1,14 +1,14 @@
 /**
  * Template and form-field models for SATS Phase 2+.
- * Extended in Phase 6 for management, draft/active/inactive status, and audit fields.
+ * Extended in Phase 6 for management, active/inactive status, and audit fields.
+ * Templates are created only when activated/published — there is no Draft status.
  */
 
 export type TemplateScope = 'generic' | 'group';
 
-export type TemplateStatus = 'Draft' | 'Active' | 'Inactive';
+export type TemplateStatus = 'Active' | 'Inactive';
 
 export const TEMPLATE_STATUSES: readonly TemplateStatus[] = [
-  'Draft',
   'Active',
   'Inactive',
 ] as const;

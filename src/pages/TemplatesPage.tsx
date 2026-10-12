@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
-import { FileStack, Plus } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { FileStack, Plus, X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { TemplateFilters } from '@/components/template/TemplateFilters';
 import { TemplateList } from '@/components/template/TemplateList';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
+import {
+  TemplateStatusConfirmDialog,
+  type TemplateStatusAction,
+} from '@/components/template/TemplateStatusConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import {
-  duplicateTemplate,
-  setTemplateStatus,
-} from '@/services/templateRepository';
+import { setTemplateStatus } from '@/services/templateRepository';
 import { getManageableTemplatesForUser, getTemplateById } from '@/services/templateService';
 import { canAccessTemplateManagement } from '@/utils/templatePermissions';
 import {
@@ -24,12 +26,17 @@ import { userHasRole } from '@/utils/permissions';
 export function TemplatesPage() {
   const { user } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [filters, setFilters] = useState<TemplateListFilters>(EMPTY_TEMPLATE_FILTERS);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [statusAction, setStatusAction] = useState<{
+    id: string;
+    name: string;
+    action: TemplateStatusAction;
+  } | null>(null);
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
 
   const templates = useMemo(() => {
     void refreshKey;
@@ -41,6 +48,15 @@ export function TemplatesPage() {
     () => filterTemplates(templates, filters),
     [templates, filters],
   );
+
+  useEffect(() => {
+    if (!previewId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewId(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [previewId]);
 
   if (!user || !canAccessTemplateManagement(user)) {
     return (
@@ -67,41 +83,44 @@ export function TemplatesPage() {
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
-  const handleActivate = (id: string) => {
+  const requestStatusChange = (id: string, action: TemplateStatusAction) => {
+    const template = templates.find((t) => t.id === id);
+    if (!template) return;
     setError(null);
     setMessage(null);
-    const result = setTemplateStatus(user, id, 'Active');
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setMessage(`“${result.template.name}” activated.`);
-    refresh();
+    setStatusAction({ id, name: template.name, action });
   };
 
-  const handleDeactivate = (id: string) => {
-    setError(null);
-    setMessage(null);
-    const result = setTemplateStatus(user, id, 'Inactive');
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setMessage(`“${result.template.name}” deactivated.`);
-    refresh();
+  const closeStatusDialog = () => {
+    if (statusSubmitting) return;
+    setStatusAction(null);
   };
 
-  const handleDuplicate = (id: string) => {
+  const confirmStatusChange = () => {
+    if (!statusAction) return;
+    setStatusSubmitting(true);
     setError(null);
     setMessage(null);
-    const result = duplicateTemplate(user, id);
+
+    const nextStatus =
+      statusAction.action === 'activate' ? 'Active' : 'Inactive';
+    const result = setTemplateStatus(user, statusAction.id, nextStatus);
+
+    setStatusSubmitting(false);
+
     if (!result.ok) {
       setError(result.error);
+      setStatusAction(null);
       return;
     }
-    setMessage(`Duplicated as “${result.template.name}” (Draft).`);
+
+    setMessage(
+      statusAction.action === 'activate'
+        ? `“${result.template.name}” activated.`
+        : `“${result.template.name}” deactivated.`,
+    );
+    setStatusAction(null);
     refresh();
-    navigate(paths.templateEdit(result.template.id));
   };
 
   return (
@@ -177,31 +196,62 @@ export function TemplatesPage() {
             ) : (
               <TemplateList
                 templates={filtered}
-                onActivate={handleActivate}
-                onDeactivate={handleDeactivate}
-                onDuplicate={handleDuplicate}
+                onActivate={(id) => requestStatusChange(id, 'activate')}
+                onDeactivate={(id) => requestStatusChange(id, 'deactivate')}
                 onPreview={setPreviewId}
               />
             )}
           </>
         )}
 
-        {previewTemplate ? (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4">
-            <div className="mx-auto max-w-5xl rounded-lg bg-brand-50 p-4 shadow-xl lg:p-6">
-              <div className="mb-4 flex justify-end">
+        <TemplateStatusConfirmDialog
+          open={statusAction != null}
+          action={statusAction?.action ?? null}
+          templateName={statusAction?.name ?? ''}
+          submitting={statusSubmitting}
+          onCancel={closeStatusDialog}
+          onConfirm={confirmStatusChange}
+        />
+
+        {previewTemplate
+          ? createPortal(
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
                 <button
                   type="button"
+                  className="absolute inset-0"
+                  aria-label="Close preview"
                   onClick={() => setPreviewId(null)}
-                  className="rounded-md border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-800"
+                />
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Template preview"
+                  className="relative z-10 flex h-[90vh] w-[90vw] flex-col overflow-hidden rounded-lg border border-brand-100 bg-brand-50 shadow-xl"
                 >
-                  Close preview
-                </button>
-              </div>
-              <TemplatePreview template={previewTemplate} />
-            </div>
-          </div>
-        ) : null}
+                  <div className="flex shrink-0 items-center gap-3 border-b border-brand-100 bg-white px-4 py-3">
+                    <div className="min-w-0 flex-1 text-base font-bold text-brand-900">
+                      Preview mode
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewId(null)}
+                      className="rounded-md p-2 text-brand-500 hover:bg-brand-50 hover:text-brand-800"
+                      aria-label="Close preview"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
+                    <TemplatePreview
+                      template={previewTemplate}
+                      showNotice={false}
+                    />
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     </PageScroll>
   );

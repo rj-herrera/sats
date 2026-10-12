@@ -21,7 +21,7 @@ export function canCreateGenericTemplate(user: User | null): boolean {
 }
 
 /**
- * Whether the user may edit / activate / deactivate / duplicate this template.
+ * Whether the user may edit / activate / deactivate this template.
  * - Admin: any template
  * - Manager: only group-scoped templates owned by their group
  * - Generic templates are Admin-only for management (not editable by group leaders)
@@ -47,11 +47,4 @@ export function canManageTemplate(
   }
 
   return false;
-}
-
-export function canDuplicateTemplate(
-  user: User | null,
-  template: FormTemplate | null | undefined,
-): boolean {
-  return canManageTemplate(user, template);
 }
