@@ -1,0 +1,12 @@
+# This project lives under the XAMPP web root. Block secrets and PHP source.
+<FilesMatch "^\.env">
+  Require all denied
+</FilesMatch>
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^backend(/|$) - [F,L]
+  RewriteRule ^database(/|$) - [F,L]
+</IfModule>
