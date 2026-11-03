@@ -26,7 +26,7 @@ function formatTitleValue(value: string | number): string {
 }
 
 /**
- * Resolve a human-readable request title / summary.
+ * Resolve a human-readable request title.
  * Prefer configured title fields, then primary descriptive text fields, then template name.
  */
 export function getRequestDisplayTitle(

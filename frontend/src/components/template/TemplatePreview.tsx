@@ -67,7 +67,7 @@ export function TemplatePreview({
         </div>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+            <dt className="text-xs font-medium text-brand-500">
               Scope
             </dt>
             <dd className="mt-1 text-brand-900">
@@ -75,7 +75,7 @@ export function TemplatePreview({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+            <dt className="text-xs font-medium text-brand-500">
               Owning group
             </dt>
             <dd className="mt-1 text-brand-900">
@@ -83,7 +83,7 @@ export function TemplatePreview({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+            <dt className="text-xs font-medium text-brand-500">
               Available to
             </dt>
             <dd className="mt-1 text-brand-900">
@@ -91,7 +91,7 @@ export function TemplatePreview({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+            <dt className="text-xs font-medium text-brand-500">
               Workflow
             </dt>
             <dd className="mt-1 text-brand-900">

@@ -142,7 +142,7 @@ export function TemplatesPage() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-brand-900">
+            <h1 className="text-xl font-semibold text-brand-900">
               Template Management
             </h1>
             <p className="mt-1 text-sm text-brand-600">

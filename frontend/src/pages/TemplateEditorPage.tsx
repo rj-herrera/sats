@@ -323,7 +323,7 @@ export function TemplateEditorPage() {
               <ArrowLeft size={16} aria-hidden />
               Back to Templates
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-brand-900">
+            <h1 className="mt-2 text-xl font-semibold text-brand-900">
               {isNew ? 'New Template' : 'Edit Template'}
             </h1>
             <p className="mt-1 text-sm text-brand-600">
@@ -365,7 +365,7 @@ export function TemplateEditorPage() {
                   ].join(' ')}
                   aria-current={isCurrent ? 'step' : undefined}
                 >
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                  <span className="block text-xs font-medium opacity-80">
                     Step {index + 1}
                   </span>
                   <span className="mt-0.5 block font-medium">{step.label}</span>

@@ -26,7 +26,7 @@ export function TestingSignIn({ onSignedIn }: { onSignedIn: () => void }) {
 
   return (
     <form onSubmit={submit} className="mt-6 border-t border-brand-100 pt-6 text-left">
-      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Testing only</p>
+      <p className="text-xs font-medium text-amber-700">Testing only</p>
       <label htmlFor="testing-employee-id" className="mt-2 block text-sm font-medium text-slate-700">
         Employee ID
       </label>

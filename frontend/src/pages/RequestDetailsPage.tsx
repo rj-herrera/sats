@@ -16,6 +16,7 @@ import { cancelRequest } from '@/services/requestLifecycleService';
 import { getRequestById } from '@/services/requestRepository';
 import { getTemplateById } from '@/services/templateService';
 import type { SubmittedRequest } from '@/types';
+import { formatDateTime } from '@/utils/formatDisplay';
 import { canUserViewRequest } from '@/utils/requestAccess';
 import { canRequesterCancel } from '@/utils/requestOwnership';
 
@@ -112,6 +113,7 @@ export function RequestDetailsPage() {
           showBackToMyRequests={isOwner}
           showCancel={showCancel}
           onCancelClick={openCancel}
+          variant="toolbar"
         />
 
         {flash ? (
@@ -123,20 +125,41 @@ export function RequestDetailsPage() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-          <div className="min-w-0 space-y-6 lg:col-span-2">
-            <SubmittedFieldValues request={request} fields={fields} />
-            <RevisionHistory request={request} />
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
+          <div className="min-w-0 space-y-6 lg:col-span-3">
+            <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+              <RequestDetailsHeader request={request} variant="summary" />
+              <SubmittedFieldValues
+                request={request}
+                fields={fields}
+                embedded
+                layout="sheet"
+                details={{
+                  requesterName: request.requesterName,
+                  groupName: request.requesterGroupName,
+                  submittedAt: request.submittedAt,
+                  revisionLabel:
+                    request.revisionNumber > 1 || request.lastResubmittedAt
+                      ? `Revision ${request.revisionNumber}${
+                          request.lastResubmittedAt
+                            ? ` · last resubmitted ${formatDateTime(request.lastResubmittedAt)}`
+                            : ''
+                        }`
+                      : null,
+                }}
+              />
+            </section>
             <ActivityTimeline events={activity} />
           </div>
 
-          <aside className="min-w-0 lg:col-span-1 lg:sticky lg:top-4">
+          <div className="min-w-0 space-y-6 lg:col-span-1">
             {request.workflowType === 'review_checking' ? (
               <ReviewerProgress reviewers={request.reviewers} />
             ) : (
               <ApprovalProgress steps={request.approvalSteps} />
             )}
-          </aside>
+            <RevisionHistory request={request} />
+          </div>
         </div>
       </div>
 

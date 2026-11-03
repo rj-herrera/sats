@@ -199,7 +199,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 SATS
               </div>
             </div>
-            <div className="mt-1 text-[11px] leading-snug text-brand-300">
+            <div className="mt-1 text-xs leading-snug text-brand-300">
               Submission and Approval Tracking System
             </div>
           </div>
@@ -215,7 +215,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
           <div>
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-brand-300">
+            <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-brand-300">
               My Workspace
             </p>
             <div className="flex flex-col gap-0.5">
@@ -233,7 +233,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {hasManagementSection && managementItems.length > 0 && (
             <div>
               <div className="mb-2 border-t border-white/10 pt-4">
-                <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-brand-300">
+                <p className="px-3 text-xs font-medium uppercase tracking-wide text-brand-300">
                   Management & Approvals
                 </p>
               </div>
@@ -252,7 +252,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
           <div className="mt-auto border-t border-white/10 pt-4">
             <div>
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">
+              <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-amber-200/90">
                 Demo data
               </p>
               <button

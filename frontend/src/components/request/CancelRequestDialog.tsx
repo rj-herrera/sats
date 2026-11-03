@@ -74,7 +74,7 @@ export function CancelRequestDialog({
 
         <p className="mt-3 text-sm text-brand-600">
           Are you sure you want to cancel{' '}
-          <span className="font-mono font-medium">{requestNumber}</span>? This
+          <span className="font-medium">{requestNumber}</span>? This
           cannot be undone.
         </p>
 

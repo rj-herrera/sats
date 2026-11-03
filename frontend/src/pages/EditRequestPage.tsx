@@ -169,10 +169,10 @@ export function EditRequestPage() {
             <ArrowLeft size={16} aria-hidden />
             Back to request
           </Link>
-          <h1 className="text-2xl font-semibold text-brand-900">
+          <h1 className="text-xl font-semibold text-brand-900">
             Edit &amp; resubmit
           </h1>
-          <p className="mt-1 font-mono text-sm text-brand-600">
+          <p className="mt-1 text-sm font-medium text-slate-900">
             {request.requestNumber} · Revision {request.revisionNumber} →{' '}
             {request.revisionNumber + 1}
           </p>
@@ -181,13 +181,13 @@ export function EditRequestPage() {
         <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+              <dt className="text-xs font-medium text-brand-500">
                 Template
               </dt>
               <dd className="mt-1 text-sm text-brand-900">{request.templateName}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+              <dt className="text-xs font-medium text-brand-500">
                 Current revision
               </dt>
               <dd className="mt-1 text-sm text-brand-900">
@@ -195,7 +195,7 @@ export function EditRequestPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+              <dt className="text-xs font-medium text-brand-500">
                 Status
               </dt>
               <dd className="mt-1 text-sm text-brand-900">{request.status}</dd>

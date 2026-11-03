@@ -70,7 +70,7 @@ function FieldLivePreview({ field }: { field: FormFieldDefinition }) {
 
   return (
     <div className="mt-4 border-t border-brand-100 pt-4">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-brand-500">
+      <p className="mb-2 text-xs font-medium text-brand-500">
         Preview
       </p>
       <div className="rounded-md border border-dashed border-brand-200 bg-brand-50/40 p-3">

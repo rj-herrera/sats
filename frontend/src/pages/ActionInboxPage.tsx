@@ -76,7 +76,7 @@ export function ActionInboxPage() {
     <PageScroll>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-900">Action Inbox</h1>
+          <h1 className="text-xl font-semibold text-brand-900">Action Inbox</h1>
         </div>
 
         <div className="flex flex-wrap gap-2 border-b border-brand-100">

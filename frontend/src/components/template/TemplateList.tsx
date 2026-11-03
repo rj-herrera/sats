@@ -27,7 +27,7 @@ export function TemplateList({
       <div className="hidden overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm lg:block">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-brand-100 text-left text-sm">
-            <thead className="bg-brand-50/80 text-xs font-semibold uppercase tracking-wide text-brand-600">
+            <thead className="bg-brand-50/80 text-sm font-medium text-slate-500">
               <tr>
                 <th className="px-4 py-3">Template</th>
                 <th className="px-4 py-3">Scope</th>

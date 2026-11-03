@@ -16,7 +16,7 @@ const STEP_STATUSES_WITH_ACTION_TIME: StepStatus[] = [
 export function RequestStatusBadge({ status }: { status: RequestStatus }) {
   return (
     <span
-      className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${getRequestStatusBadgeClasses(status)}`}
+      className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-medium ${getRequestStatusBadgeClasses(status)}`}
     >
       {getRequestStatusLabel(status)}
     </span>

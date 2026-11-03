@@ -6,7 +6,7 @@ export function NotFoundPage() {
   return (
     <PageScroll>
       <div className="mx-auto max-w-md py-16 text-center">
-        <h1 className="text-2xl font-semibold text-brand-900">Page not found</h1>
+        <h1 className="text-xl font-semibold text-brand-900">Page not found</h1>
         <p className="mt-2 text-sm text-brand-600">
           The page you requested does not exist.
         </p>

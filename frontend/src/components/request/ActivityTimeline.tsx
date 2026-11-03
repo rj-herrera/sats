@@ -15,38 +15,40 @@ export function ActivityTimeline({ events }: ActivityTimelineProps) {
       <h2 className="text-base font-semibold text-brand-900">Activity history</h2>
 
       {ordered.length === 0 ? (
-        <p className="mt-4 text-sm text-brand-500">No activity recorded yet.</p>
+        <p className="mt-4 text-sm text-slate-500">No activity recorded yet.</p>
       ) : (
-        <ol className="mt-5 space-y-4">
-          {ordered.map((event, index) => (
-            <li key={event.id} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-brand-700" />
-                {index < ordered.length - 1 ? (
-                  <span className="mt-1 w-px flex-1 bg-brand-200" />
-                ) : null}
-              </div>
-              <div className="min-w-0 pb-1">
-                <p className="text-sm font-medium text-brand-900">{event.description}</p>
-                <p className="mt-0.5 text-xs text-brand-600">
-                  {event.actorName}
-                  <span className="mx-1.5 text-brand-300">·</span>
-                  {formatDateTime(event.timestamp)}
-                  {event.revisionNumber != null && event.revisionNumber > 1 ? (
-                    <>
-                      <span className="mx-1.5 text-brand-300">·</span>
-                      Rev {event.revisionNumber}
-                    </>
-                  ) : null}
-                </p>
-                {event.comment ? (
-                  <p className="mt-1 whitespace-pre-wrap text-xs text-brand-700">
-                    “{event.comment}”
+        <ol className="mt-4">
+          {ordered.map((event, index) => {
+            const isLast = index === ordered.length - 1;
+            return (
+              <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">
+                {isLast ? null : (
+                  <span
+                    className="absolute top-6 bottom-0 left-[11px] w-px bg-slate-200"
+                    aria-hidden
+                  />
+                )}
+                <span className="relative z-10 h-6 w-6 shrink-0 rounded-full border-2 border-slate-300 bg-white" />
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {event.description}
                   </p>
-                ) : null}
-              </div>
-            </li>
-          ))}
+                  <p className="text-sm text-slate-500">{event.actorName}</p>
+                  <p className="text-sm text-slate-500">
+                    {formatDateTime(event.timestamp)}
+                    {event.revisionNumber != null && event.revisionNumber > 1
+                      ? ` · Rev ${event.revisionNumber}`
+                      : ''}
+                  </p>
+                  {event.comment ? (
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">
+                      “{event.comment}”
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>

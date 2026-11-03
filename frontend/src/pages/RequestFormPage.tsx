@@ -187,7 +187,7 @@ export function RequestFormPage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 lg:p-6">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-900">New Request</h1>
+          <h1 className="text-xl font-semibold text-brand-900">New Request</h1>
         </div>
 
         <TemplateSelector

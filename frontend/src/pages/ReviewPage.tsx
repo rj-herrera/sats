@@ -156,25 +156,25 @@ export function ReviewPage() {
           <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-mono text-sm text-brand-600">
+                <p className="text-sm font-medium text-slate-900">
                   {request.requestNumber}
                 </p>
                 <RequestStatusBadge status={request.status} />
               </div>
-              <h1 className="mt-1 text-2xl font-semibold text-brand-900">
+              <h1 className="mt-1 text-xl font-semibold text-brand-900">
                 {getRequestDisplayTitle(request)}
               </h1>
             </div>
 
             <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+                <dt className="text-xs font-medium text-brand-500">
                   Requester
                 </dt>
                 <dd className="mt-1 text-sm text-brand-900">{request.requesterName}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+                <dt className="text-xs font-medium text-brand-500">
                   Group
                 </dt>
                 <dd className="mt-1 text-sm text-brand-900">
@@ -182,7 +182,7 @@ export function ReviewPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-brand-500">
+                <dt className="text-xs font-medium text-brand-500">
                   Submitted
                 </dt>
                 <dd className="mt-1 text-sm text-brand-900">

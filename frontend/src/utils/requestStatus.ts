@@ -23,15 +23,15 @@ export function getStepStatusLabel(status: StepStatus): string {
 export function getRequestStatusBadgeClasses(status: RequestStatus): string {
   switch (status) {
     case 'Pending':
-      return 'bg-amber-50 text-amber-800 ring-amber-200';
+      return 'bg-amber-50 text-amber-800';
     case 'Approved':
-      return 'bg-emerald-50 text-emerald-800 ring-emerald-200';
+      return 'bg-emerald-50 text-emerald-800';
     case 'Rejected':
-      return 'bg-red-50 text-red-800 ring-red-200';
+      return 'bg-red-50 text-red-800';
     case 'Returned':
-      return 'bg-orange-50 text-orange-800 ring-orange-200';
+      return 'bg-orange-50 text-orange-800';
     case 'Cancelled':
-      return 'bg-slate-100 text-slate-700 ring-slate-300';
+      return 'bg-slate-100 text-slate-700';
   }
 }
 
