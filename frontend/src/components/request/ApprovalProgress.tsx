@@ -22,29 +22,29 @@ function statusOf(step: ApprovalStepSnapshot): StepStatus {
 function TimelineMark({ status }: { status: StepStatus }) {
   const circle =
     status === 'Approved' ? (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
-        <Check size={14} strokeWidth={3} aria-hidden />
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white">
+        <Check size={12} strokeWidth={3} aria-hidden />
       </span>
     ) : status === 'Rejected' ? (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-        <X size={14} strokeWidth={3} aria-hidden />
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white">
+        <X size={12} strokeWidth={3} aria-hidden />
       </span>
     ) : status === 'Returned' ? (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white">
-        <Undo2 size={13} strokeWidth={2.5} aria-hidden />
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-white">
+        <Undo2 size={11} strokeWidth={2.5} aria-hidden />
       </span>
     ) : status === 'Pending' ? (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-blue-500 bg-white">
-        <span className="h-3.5 w-3.5 rounded-full bg-blue-500" />
+      <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-blue-500 bg-white">
+        <span className="h-3 w-3 rounded-full bg-blue-500" />
       </span>
     ) : (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-slate-200 bg-white">
-        <span className="h-3.5 w-3.5 rounded-full bg-slate-300" />
+      <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-slate-200 bg-white">
+        <span className="h-3 w-3 rounded-full bg-slate-300" />
       </span>
     );
 
   return (
-    <span className="relative z-10 flex h-6 w-6 items-center justify-center">
+    <span className="relative z-10 flex h-5 w-5 items-center justify-center">
       {status === 'Pending' ? (
         <span className="absolute -inset-1 rounded-full bg-blue-50" aria-hidden />
       ) : null}
@@ -54,9 +54,7 @@ function TimelineMark({ status }: { status: StepStatus }) {
 }
 
 function thirdLine(item: ProgressTimelineItem) {
-  if (item.actionAt) {
-    return <p className="text-sm text-slate-500">{formatDateTime(item.actionAt)}</p>;
-  }
+  if (item.actionAt) return null;
   if (item.status === 'Pending') {
     return (
       <span className="mt-1 inline-flex w-fit rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
@@ -98,16 +96,26 @@ export function ProgressTimeline({
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
           return (
-            <li key={item.key} className="relative flex gap-3 pb-5 last:pb-0">
+            <li key={item.key} className="group relative flex gap-3 pb-5 last:pb-0">
               {isLast ? null : (
                 <span
-                  className="absolute top-6 bottom-0 left-[11px] w-px bg-slate-200"
+                  className="absolute top-5 bottom-0 left-[9px] w-px bg-slate-200"
                   aria-hidden
                 />
               )}
-              <TimelineMark status={item.status} />
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+              {item.actionAt ? (
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute top-0 right-full z-20 mr-2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+                >
+                  {formatDateTime(item.actionAt)}
+                </span>
+              ) : null}
+              <span className="flex h-5 shrink-0 items-center">
+                <TimelineMark status={item.status} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold leading-5 text-slate-900">{item.name}</p>
                 <p className="text-sm text-slate-500">
                   {item.position || 'Position unavailable'}
                 </p>
