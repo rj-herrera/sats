@@ -1,5 +1,18 @@
 import { useState, type ReactNode } from 'react';
-import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import {
+  Download,
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileJson,
+  FilePlay,
+  FileSpreadsheet,
+  FileText,
+  Presentation,
+  type LucideIcon,
+} from 'lucide-react';
 import type { AttachmentMetadata, FormFieldDefinition, SubmittedRequest } from '@/types';
 import {
   formatDateTime,
@@ -45,12 +58,73 @@ function isDescriptionField(field: FormFieldDefinition): boolean {
   );
 }
 
-function fileIcon(fileName: string) {
+function fileIcon(fileName: string, fileType: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
-  if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') {
-    return <FileSpreadsheet size={18} className="text-emerald-600" aria-hidden />;
+  const type = fileType.toLowerCase();
+  const has = (values: string[]) => values.includes(ext);
+
+  let Icon: LucideIcon = File;
+  let className = 'text-slate-400';
+
+  if (type.startsWith('image/') || has(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tif', 'tiff', 'heic'])) {
+    Icon = FileImage;
+    className = 'text-sky-600';
+  } else if (type.startsWith('video/') || has(['mp4', 'mov', 'webm', 'mkv', 'avi'])) {
+    Icon = FilePlay;
+    className = 'text-violet-600';
+  } else if (type.startsWith('audio/') || has(['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'])) {
+    Icon = FileAudio;
+    className = 'text-pink-600';
+  } else if (type === 'application/pdf' || ext === 'pdf') {
+    Icon = FileText;
+    className = 'text-red-500';
+  } else if (
+    type.includes('spreadsheet') ||
+    type.includes('excel') ||
+    type === 'text/csv' ||
+    has(['xls', 'xlsx', 'csv', 'ods'])
+  ) {
+    Icon = FileSpreadsheet;
+    className = 'text-emerald-600';
+  } else if (
+    type.includes('presentation') ||
+    type.includes('powerpoint') ||
+    has(['ppt', 'pptx', 'odp'])
+  ) {
+    Icon = Presentation;
+    className = 'text-orange-500';
+  } else if (
+    type.includes('word') ||
+    type.includes('msword') ||
+    type.includes('wordprocessing') ||
+    has(['doc', 'docx', 'odt', 'rtf'])
+  ) {
+    Icon = FileText;
+    className = 'text-blue-600';
+  } else if (type === 'application/json' || ext === 'json') {
+    Icon = FileJson;
+    className = 'text-amber-600';
+  } else if (
+    type.includes('zip') ||
+    type.includes('compressed') ||
+    type.includes('archive') ||
+    has(['zip', 'rar', '7z', 'tar', 'gz'])
+  ) {
+    Icon = FileArchive;
+    className = 'text-amber-700';
+  } else if (
+    type.includes('javascript') ||
+    type === 'application/xml' ||
+    has(['js', 'jsx', 'ts', 'tsx', 'html', 'css', 'py', 'java', 'php', 'xml', 'yml', 'yaml', 'sql'])
+  ) {
+    Icon = FileCode;
+    className = 'text-slate-600';
+  } else if (type.startsWith('text/') || has(['txt', 'md', 'log'])) {
+    Icon = FileText;
+    className = 'text-slate-500';
   }
-  return <FileText size={18} className="text-red-500" aria-hidden />;
+
+  return <Icon size={18} className={className} aria-hidden />;
 }
 
 function Pair({ label, children }: { label: string; children: ReactNode }) {
@@ -230,7 +304,7 @@ export function SubmittedFieldValues({
                     className="flex min-w-56 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-50">
-                      {fileIcon(attachment.fileName)}
+                      {fileIcon(attachment.fileName, attachment.fileType)}
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-slate-900">

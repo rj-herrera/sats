@@ -24,22 +24,26 @@ export function ActivityTimeline({ events }: ActivityTimelineProps) {
               <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">
                 {isLast ? null : (
                   <span
-                    className="absolute top-6 bottom-0 left-[11px] w-px bg-slate-200"
+                    className="absolute top-5 bottom-0 left-[9px] w-px bg-slate-200"
                     aria-hidden
                   />
                 )}
-                <span className="relative z-10 h-6 w-6 shrink-0 rounded-full border-2 border-slate-300 bg-white" />
-                <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {event.description}
-                  </p>
+                <span className="relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-white">
+                  <span className="h-3 w-3 rounded-full bg-blue-500" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold leading-5 text-slate-900">
+                      {event.description}
+                    </p>
+                    <p className="shrink-0 text-xs leading-5 text-slate-500">
+                      {formatDateTime(event.timestamp)}
+                      {event.revisionNumber != null && event.revisionNumber > 1
+                        ? ` · Rev ${event.revisionNumber}`
+                        : ''}
+                    </p>
+                  </div>
                   <p className="text-sm text-slate-500">{event.actorName}</p>
-                  <p className="text-sm text-slate-500">
-                    {formatDateTime(event.timestamp)}
-                    {event.revisionNumber != null && event.revisionNumber > 1
-                      ? ` · Rev ${event.revisionNumber}`
-                      : ''}
-                  </p>
                   {event.comment ? (
                     <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">
                       “{event.comment}”
