@@ -1,6 +1,9 @@
+import { GroupMultiSelect } from '@/components/template/GroupMultiSelect';
 import { listActiveGroups, listGroups } from '@/services/groupRepository';
 import type { FormTemplate, TemplateScope, User } from '@/types';
 import { canCreateGenericTemplate } from '@/utils/templatePermissions';
+
+export type TemplateAvailabilityMode = 'all' | 'selected';
 
 interface TemplateBasicInformationProps {
   user: User;
@@ -8,16 +11,25 @@ interface TemplateBasicInformationProps {
   description: string;
   scope: TemplateScope;
   owningGroupId: string | null;
-  allowedGroupIds: string[];
+  availabilityMode: TemplateAvailabilityMode;
+  groupSelectionDraft: string[];
+  rememberedOwningGroupId: string | null;
   onChange: (
     patch: Partial<
       Pick<
         FormTemplate,
         'name' | 'description' | 'scope' | 'owningGroupId' | 'allowedGroupIds'
-      >
+      > & {
+        availabilityMode: TemplateAvailabilityMode;
+        groupSelectionDraft: string[];
+        rememberedOwningGroupId: string | null;
+      }
     >,
   ) => void;
 }
+
+const fieldClass =
+  'w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm text-brand-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20';
 
 export function TemplateBasicInformation({
   user,
@@ -25,20 +37,45 @@ export function TemplateBasicInformation({
   description,
   scope,
   owningGroupId,
-  allowedGroupIds,
+  availabilityMode,
+  groupSelectionDraft,
+  rememberedOwningGroupId,
   onChange,
 }: TemplateBasicInformationProps) {
   const canGeneric = canCreateGenericTemplate(user);
   const lockGroup = !canGeneric;
+  const groups = canGeneric ? listGroups() : listActiveGroups();
+  const owningMissing = scope === 'group' && !owningGroupId;
+  const selectionMissing =
+    scope === 'generic' &&
+    availabilityMode === 'selected' &&
+    groupSelectionDraft.length === 0;
 
-  const toggleAllowedGroup = (groupId: string) => {
-    if (allowedGroupIds.includes(groupId)) {
+  const selectScope = (next: TemplateScope) => {
+    if (next === scope) return;
+    if (next === 'group') {
+      const groupId = rememberedOwningGroupId ?? owningGroupId ?? user.groupId;
       onChange({
-        allowedGroupIds: allowedGroupIds.filter((id) => id !== groupId),
+        scope: 'group',
+        owningGroupId: groupId,
+        rememberedOwningGroupId: groupId,
+        allowedGroupIds: groupId ? [groupId] : [],
       });
-    } else {
-      onChange({ allowedGroupIds: [...allowedGroupIds, groupId] });
+      return;
     }
+    onChange({
+      scope: 'generic',
+      owningGroupId: null,
+      allowedGroupIds: availabilityMode === 'selected' ? [...groupSelectionDraft] : [],
+    });
+  };
+
+  const selectAvailability = (next: TemplateAvailabilityMode) => {
+    if (next === availabilityMode) return;
+    onChange({
+      availabilityMode: next,
+      allowedGroupIds: next === 'selected' ? [...groupSelectionDraft] : [],
+    });
   };
 
   return (
@@ -57,7 +94,7 @@ export function TemplateBasicInformation({
         <input
           value={name}
           onChange={(e) => onChange({ name: e.target.value })}
-          className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          className={fieldClass}
           placeholder="e.g. Overtime Request"
         />
       </label>
@@ -70,61 +107,38 @@ export function TemplateBasicInformation({
           value={description}
           onChange={(e) => onChange({ description: e.target.value })}
           rows={3}
-          className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          className={fieldClass}
           placeholder="What is this template for?"
         />
       </label>
 
       {canGeneric ? (
-        <fieldset>
-          <legend className="mb-2 text-sm font-medium text-brand-800">
+        <div>
+          <span id="template-scope-label" className="mb-1.5 block text-sm font-medium text-brand-800">
             Template scope
-          </legend>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex gap-3 rounded-lg border border-brand-100 p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/50">
-              <input
-                type="radio"
-                name="template-scope"
-                checked={scope === 'group'}
-                onChange={() =>
-                  onChange({
-                    scope: 'group',
-                    owningGroupId: owningGroupId ?? user.groupId,
-                    allowedGroupIds: owningGroupId
-                      ? [owningGroupId]
-                      : [user.groupId],
-                  })
-                }
-              />
-              <span className="text-sm">
-                <span className="font-medium text-brand-900">Group-specific</span>
-                <span className="mt-0.5 block text-xs text-brand-500">
-                  Owned by one group
-                </span>
-              </span>
-            </label>
-            <label className="flex gap-3 rounded-lg border border-brand-100 p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/50">
-              <input
-                type="radio"
-                name="template-scope"
-                checked={scope === 'generic'}
-                onChange={() =>
-                  onChange({
-                    scope: 'generic',
-                    owningGroupId: null,
-                    allowedGroupIds: [],
-                  })
-                }
-              />
-              <span className="text-sm">
-                <span className="font-medium text-brand-900">Generic / Shared</span>
-                <span className="mt-0.5 block text-xs text-brand-500">
-                  Admin-managed, multi-group
-                </span>
-              </span>
-            </label>
+          </span>
+          <div
+            role="radiogroup"
+            aria-labelledby="template-scope-label"
+            className="grid grid-cols-2 rounded-md border border-brand-200 bg-brand-50 p-1"
+          >
+            <ScopeOption
+              label="Group-specific"
+              checked={scope === 'group'}
+              onSelect={() => selectScope('group')}
+            />
+            <ScopeOption
+              label="Generic / Shared"
+              checked={scope === 'generic'}
+              onSelect={() => selectScope('generic')}
+            />
           </div>
-        </fieldset>
+          <p className="mt-2 text-xs text-brand-500">
+            {scope === 'group'
+              ? 'Template owned and managed within one organizational group.'
+              : 'Admin-managed template that can be made available to multiple groups.'}
+          </p>
+        </div>
       ) : (
         <div className="rounded-md border border-brand-100 bg-brand-50/50 px-3 py-2 text-sm text-brand-700">
           Group-specific template for <strong>{user.groupName}</strong>. Generic
@@ -133,56 +147,131 @@ export function TemplateBasicInformation({
       )}
 
       {scope === 'group' ? (
-        <label className="block">
+        <div>
           <span className="mb-1 block text-sm font-medium text-brand-800">
-            Owning group
+            Owning group *
           </span>
-          <select
-            value={owningGroupId ?? ''}
-            disabled={lockGroup}
-            onChange={(e) =>
-              onChange({
-                owningGroupId: e.target.value,
-                allowedGroupIds: [e.target.value],
-              })
-            }
-            className="w-full rounded-md border border-brand-200 py-2 pr-10 pl-3 text-sm disabled:bg-brand-50"
-          >
-            {(canGeneric ? listGroups() : listActiveGroups()).map((group) => (
-              <option key={group.id} value={group.id} disabled={group.status !== 'Active'}>
-                {group.name}
-                {group.status !== 'Active' ? ' (Inactive)' : ''}
+          {lockGroup ? (
+            <div className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-900">
+              {user.groupName}
+            </div>
+          ) : (
+            <select
+              value={owningGroupId ?? ''}
+              aria-invalid={owningMissing || undefined}
+              onChange={(e) => {
+                const groupId = e.target.value;
+                onChange({
+                  owningGroupId: groupId,
+                  rememberedOwningGroupId: groupId,
+                  allowedGroupIds: groupId ? [groupId] : [],
+                });
+              }}
+              className={[
+                fieldClass,
+                owningMissing ? 'border-red-400 focus:ring-red-500/20' : '',
+              ].join(' ')}
+            >
+              <option value="" disabled>
+                Select owning group
               </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <fieldset>
-          <legend className="mb-2 text-sm font-medium text-brand-800">
-            Available groups
-          </legend>
-          <p className="mb-2 text-xs text-brand-500">
-            Leave all unchecked to make this template available to every group.
-          </p>
-          <ul className="space-y-2">
-            {listGroups().map((group) => (
-              <li key={group.id}>
-                <label className="flex items-center gap-2 text-sm text-brand-800">
-                  <input
-                    type="checkbox"
-                    checked={allowedGroupIds.includes(group.id)}
-                    onChange={() => toggleAllowedGroup(group.id)}
-                    disabled={group.status !== 'Active'}
-                    className="rounded border-brand-300"
-                  />
+              {groups.map((group) => (
+                <option
+                  key={group.id}
+                  value={group.id}
+                  disabled={group.status !== 'Active'}
+                >
                   {group.name}
                   {group.status !== 'Active' ? ' (Inactive)' : ''}
-                </label>
-              </li>
-            ))}
-          </ul>
+                </option>
+              ))}
+            </select>
+          )}
+          {owningMissing ? (
+            <p className="mt-1 text-xs text-red-700" role="alert">
+              Owning group is required.
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-brand-800">Available to</legend>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <label className="inline-flex items-center gap-2 text-sm text-brand-800">
+              <input
+                type="radio"
+                name="template-availability"
+                checked={availabilityMode === 'all'}
+                onChange={() => selectAvailability('all')}
+              />
+              All groups
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-brand-800">
+              <input
+                type="radio"
+                name="template-availability"
+                checked={availabilityMode === 'selected'}
+                onChange={() => selectAvailability('selected')}
+              />
+              Selected groups
+            </label>
+          </div>
+          {availabilityMode === 'all' ? (
+            <p className="mt-2 text-xs text-brand-500">
+              This template will be available to every eligible group.
+            </p>
+          ) : (
+            <div className="mt-3">
+              <span className="mb-1 block text-sm font-medium text-brand-800">
+                Select groups
+              </span>
+              <GroupMultiSelect
+                groups={listGroups()}
+                selectedIds={groupSelectionDraft}
+                invalid={selectionMissing}
+                onChange={(ids) =>
+                  onChange({
+                    groupSelectionDraft: ids,
+                    allowedGroupIds: ids,
+                  })
+                }
+              />
+              {selectionMissing ? (
+                <p className="mt-1 text-xs text-red-700" role="alert">
+                  Select at least one group.
+                </p>
+              ) : null}
+            </div>
+          )}
         </fieldset>
       )}
     </section>
+  );
+}
+
+function ScopeOption({
+  label,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={[
+        'rounded px-3 py-1.5 text-sm font-medium',
+        checked
+          ? 'bg-white text-brand-900 shadow-sm'
+          : 'text-brand-600 hover:text-brand-900',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   );
 }

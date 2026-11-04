@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MOCK_GROUPS } from '@/data/mockUsers';
-import { validateTemplateDraft, validateTemplateForActivation } from '@/utils/templateValidation';
+import {
+  validateGenericGroupSelection,
+  validateTemplateDraft,
+  validateTemplateForActivation,
+} from '@/utils/templateValidation';
 import type { FormTemplate } from '@/types';
 
 beforeEach(() => {
@@ -55,5 +59,14 @@ describe('templateValidation', () => {
   it('accepts a valid group template for activation', () => {
     const result = validateTemplateForActivation(baseTemplate());
     expect(result.valid).toBe(true);
+  });
+
+  it('requires a group when a shared template is limited to selected groups', () => {
+    expect(validateGenericGroupSelection('generic', 'selected', [])).toBe(
+      'Select at least one group.',
+    );
+    expect(validateGenericGroupSelection('generic', 'selected', ['grp-system'])).toBeNull();
+    expect(validateGenericGroupSelection('generic', 'all', [])).toBeNull();
+    expect(validateGenericGroupSelection('group', 'selected', [])).toBeNull();
   });
 });

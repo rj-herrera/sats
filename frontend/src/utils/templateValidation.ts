@@ -192,6 +192,26 @@ export function validateTemplateDraft(
   };
 }
 
+/**
+ * Generic templates store "all groups" as an empty id list.
+ * The editor keeps an explicit all/selected choice so an empty selection
+ * is not saved as "available to everyone" by accident.
+ */
+export function validateGenericGroupSelection(
+  scope: FormTemplate['scope'],
+  availabilityMode: 'all' | 'selected',
+  selectedGroupIds: string[],
+): string | null {
+  if (
+    scope === 'generic' &&
+    availabilityMode === 'selected' &&
+    selectedGroupIds.length === 0
+  ) {
+    return 'Select at least one group.';
+  }
+  return null;
+}
+
 /** Full validation required before Activate. */
 export function validateTemplateForActivation(
   template: Pick<

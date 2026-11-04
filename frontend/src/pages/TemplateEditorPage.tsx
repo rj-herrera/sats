@@ -3,7 +3,10 @@ import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApprovalWorkflowBuilder } from '@/components/template/ApprovalWorkflowBuilder';
 import { FormFieldBuilder } from '@/components/template/FormFieldBuilder';
-import { TemplateBasicInformation } from '@/components/template/TemplateBasicInformation';
+import {
+  TemplateBasicInformation,
+  type TemplateAvailabilityMode,
+} from '@/components/template/TemplateBasicInformation';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
 import { TemplateStatusBadge } from '@/components/template/TemplateStatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +29,7 @@ import {
   canManageTemplate,
 } from '@/utils/templatePermissions';
 import {
+  validateGenericGroupSelection,
   validateTemplateDraft,
   validateTemplateForActivation,
 } from '@/utils/templateValidation';
@@ -45,9 +49,46 @@ interface EditorState {
   scope: FormTemplate['scope'];
   owningGroupId: string | null;
   allowedGroupIds: string[];
+  /** Explicit all-vs-selected choice. Empty ids still mean all groups when saved. */
+  availabilityMode: TemplateAvailabilityMode;
+  /** Kept while All groups is selected so switching back restores the list. */
+  groupSelectionDraft: string[];
+  rememberedOwningGroupId: string | null;
   fields: FormFieldDefinition[];
   workflow: TemplateWorkflow;
   status: FormTemplate['status'];
+}
+
+function submittedOwningGroupId(state: EditorState): string | null {
+  return state.scope === 'group' ? state.owningGroupId : null;
+}
+
+function submittedAllowedGroupIds(state: EditorState): string[] {
+  if (state.scope !== 'generic') return [...state.allowedGroupIds];
+  return state.availabilityMode === 'all' ? [] : [...state.groupSelectionDraft];
+}
+
+function persistedEditorState(state: EditorState) {
+  return {
+    name: state.name,
+    description: state.description,
+    scope: state.scope,
+    owningGroupId: submittedOwningGroupId(state),
+    allowedGroupIds: submittedAllowedGroupIds(state),
+    fields: state.fields,
+    workflow: state.workflow,
+    status: state.status,
+  };
+}
+
+function basicStepError(state: EditorState): string | null {
+  const draftCheck = validateTemplateDraft(persistedEditorState(state));
+  if (!draftCheck.valid) return draftCheck.errors.join(' ');
+  return validateGenericGroupSelection(
+    state.scope,
+    state.availabilityMode,
+    state.groupSelectionDraft,
+  );
 }
 
 function createInitialFields(): FormFieldDefinition[] {
@@ -71,6 +112,13 @@ function buildInitialState(user: User, existing?: FormTemplate): EditorState {
       scope: existing.scope,
       owningGroupId: existing.owningGroupId,
       allowedGroupIds: [...existing.allowedGroupIds],
+      availabilityMode:
+        existing.scope === 'generic' && existing.allowedGroupIds.length > 0
+          ? 'selected'
+          : 'all',
+      groupSelectionDraft:
+        existing.scope === 'generic' ? [...existing.allowedGroupIds] : [],
+      rememberedOwningGroupId: existing.owningGroupId ?? user.groupId,
       fields: existing.fields.map((f) => ({ ...f })),
       workflow:
         existing.workflow.type === 'hierarchy_approval'
@@ -89,6 +137,9 @@ function buildInitialState(user: User, existing?: FormTemplate): EditorState {
     scope: 'group',
     owningGroupId: user.groupId,
     allowedGroupIds: [user.groupId],
+    availabilityMode: 'all',
+    groupSelectionDraft: [],
+    rememberedOwningGroupId: user.groupId,
     fields: createInitialFields(),
     workflow: { type: 'review_checking' },
     status: 'Active',
@@ -106,8 +157,8 @@ function toPreviewTemplate(
     name: state.name || 'Untitled template',
     description: state.description,
     scope: state.scope,
-    owningGroupId: state.owningGroupId,
-    allowedGroupIds: state.allowedGroupIds,
+    owningGroupId: submittedOwningGroupId(state),
+    allowedGroupIds: submittedAllowedGroupIds(state),
     status: state.status,
     fields: state.fields,
     workflow: state.workflow,
@@ -137,7 +188,7 @@ export function TemplateEditorPage() {
     user ? buildInitialState(user, existing) : null,
   );
   const [baseline, setBaseline] = useState(() =>
-    user ? JSON.stringify(buildInitialState(user, existing)) : '',
+    user ? JSON.stringify(persistedEditorState(buildInitialState(user, existing))) : '',
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,13 +205,15 @@ export function TemplateEditorPage() {
     if (!isNew && existing && !canManageTemplate(user, existing)) return;
     const initial = buildInitialState(user, existing);
     setState(initial);
-    setBaseline(JSON.stringify(initial));
+    setBaseline(JSON.stringify(persistedEditorState(initial)));
     setStepIndex(0);
     setError(null);
     setMessage(null);
   }, [draftKey]);
 
-  const dirty = state ? JSON.stringify(state) !== baseline : false;
+  const dirty = state
+    ? JSON.stringify(persistedEditorState(state)) !== baseline
+    : false;
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -225,42 +278,45 @@ export function TemplateEditorPage() {
     setMessage(null);
     setFieldErrors({});
 
+    const scopeError = basicStepError(state);
+    if (scopeError) {
+      setSaving(false);
+      setError(scopeError);
+      setStepIndex(0);
+      return;
+    }
+
+    const saved = persistedEditorState({ ...state, status });
+
     // Templates are only persisted when activated (or saved as Inactive when editing).
     if (status === 'Active') {
-      const activation = validateTemplateForActivation(state);
+      const activation = validateTemplateForActivation(saved);
       setWarnings(activation.warnings);
       setFieldErrors(activation.fieldErrors);
       if (!activation.valid) {
         setSaving(false);
         setError(activation.errors.join(' '));
         if (Object.keys(activation.fieldErrors).length > 0) setStepIndex(1);
-        else if (state.workflow.type === 'hierarchy_approval') setStepIndex(2);
+        else if (saved.workflow.type === 'hierarchy_approval') setStepIndex(2);
         else setStepIndex(0);
         return;
       }
     } else {
-      const basics = validateTemplateDraft(state);
-      if (!basics.valid) {
-        setSaving(false);
-        setError(basics.errors.join(' '));
-        setStepIndex(0);
-        return;
-      }
       const soft = validateTemplateForActivation({
-        ...state,
-        description: state.description || ' ',
+        ...saved,
+        description: saved.description || ' ',
       });
       setWarnings(soft.warnings);
     }
 
     const payload = {
-      name: state.name,
-      description: state.description,
-      scope: state.scope,
-      owningGroupId: state.owningGroupId,
-      allowedGroupIds: state.allowedGroupIds,
-      fields: state.fields,
-      workflow: state.workflow,
+      name: saved.name,
+      description: saved.description,
+      scope: saved.scope,
+      owningGroupId: saved.owningGroupId,
+      allowedGroupIds: saved.allowedGroupIds,
+      fields: saved.fields,
+      workflow: saved.workflow,
       status,
     };
 
@@ -285,7 +341,7 @@ export function TemplateEditorPage() {
 
     const nextState = buildInitialState(user, result.template);
     setState(nextState);
-    setBaseline(JSON.stringify(nextState));
+    setBaseline(JSON.stringify(persistedEditorState(nextState)));
     setMessage('Template saved as Inactive.');
   };
 
@@ -310,9 +366,9 @@ export function TemplateEditorPage() {
     setMessage(null);
 
     if (currentStep.id === 'basic') {
-      const draftCheck = validateTemplateDraft(state);
-      if (!draftCheck.valid) {
-        setError(draftCheck.errors.join(' '));
+      const scopeError = basicStepError(state);
+      if (scopeError) {
+        setError(scopeError);
         return;
       }
     }
@@ -324,8 +380,8 @@ export function TemplateEditorPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 lg:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-4 lg:p-6">
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
           <div>
             <Link
               to={paths.templates}
@@ -348,20 +404,20 @@ export function TemplateEditorPage() {
         </div>
 
         {message ? (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <div className="shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             {message}
           </div>
         ) : null}
         {error ? (
           <div
-            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            className="shrink-0 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
             role="alert"
           >
             {error}
           </div>
         ) : null}
 
-        <nav aria-label="Template setup steps">
+        <nav aria-label="Template setup steps" className="shrink-0">
           <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step, index) => {
               const isCurrent = index === stepIndex;
@@ -389,7 +445,7 @@ export function TemplateEditorPage() {
           </ol>
         </nav>
 
-        <div className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
           {currentStep.id === 'basic' ? (
             <TemplateBasicInformation
               user={user}
@@ -397,7 +453,9 @@ export function TemplateEditorPage() {
               description={state.description}
               scope={state.scope}
               owningGroupId={state.owningGroupId}
-              allowedGroupIds={state.allowedGroupIds}
+              availabilityMode={state.availabilityMode}
+              groupSelectionDraft={state.groupSelectionDraft}
+              rememberedOwningGroupId={state.rememberedOwningGroupId}
               onChange={(partial) => patch(partial)}
             />
           ) : null}
