@@ -10,6 +10,8 @@ const ALL_GROUPS = '__all__';
 interface AssignedApproverSelectProps {
   assigneeUserId: string;
   onChange: (assigneeUserId: string) => void;
+  /** Focus the employee control when this row is newly opened for editing. */
+  autoFocus?: boolean;
 }
 
 interface GroupOption {
@@ -87,6 +89,7 @@ function employeesInGroup(groupId: string, assigneeUserId: string): User[] {
 export function AssignedApproverSelect({
   assigneeUserId,
   onChange,
+  autoFocus = false,
 }: AssignedApproverSelectProps) {
   const listId = useId();
   const searchId = useId();
@@ -145,6 +148,10 @@ export function AssignedApproverSelect({
   useEffect(() => {
     if (open === 'employee') searchRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    if (autoFocus) employeeButtonRef.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     setActiveIndex(0);

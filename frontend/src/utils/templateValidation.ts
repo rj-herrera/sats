@@ -114,7 +114,7 @@ function validateWorkflow(workflow: TemplateWorkflow): {
 
   const steps = [...workflow.steps].sort((a, b) => a.stepOrder - b.stepOrder);
   if (steps.length === 0) {
-    errors.push('Hierarchy Approval requires at least one approval step.');
+    errors.push('Hierarchy Approval requires at least one approver.');
     return { errors, warnings };
   }
 
@@ -123,30 +123,30 @@ function validateWorkflow(workflow: TemplateWorkflow): {
 
   steps.forEach((step, index) => {
     if (!step.id || stepIds.has(step.id)) {
-      errors.push(`Approval step ${index + 1} must have a unique step ID.`);
+      errors.push(`Approver ${index + 1} must have a unique entry.`);
     } else {
       stepIds.add(step.id);
     }
     if (!step.roleLabel.trim()) {
-      errors.push(`Approval step ${index + 1} needs a role / responsibility label.`);
+      errors.push(`Approver ${index + 1} is missing its stored approval label.`);
     }
     if (!step.assigneeUserId) {
-      errors.push(`Approval step ${index + 1} needs an assigned approver.`);
+      errors.push(`Approver ${index + 1} needs an assigned employee.`);
     } else {
       const user = getUserById(step.assigneeUserId);
       if (!user) {
         errors.push(
-          `Approval step ${index + 1} references an unknown user (${step.assigneeUserId}).`,
+          `Approver ${index + 1} references an unknown employee (${step.assigneeUserId}).`,
         );
       } else if (user.status !== 'Active') {
         errors.push(
-          `Approval step ${index + 1}: ${user.name} is inactive.`,
+          `Approver ${index + 1}: ${user.name} is inactive.`,
         );
       } else {
         const group = getGroupById(user.groupId);
         if (!group || group.status !== 'Active') {
           errors.push(
-            `Approval step ${index + 1}: ${user.name} belongs to an inactive group.`,
+            `Approver ${index + 1}: ${user.name} belongs to an inactive group.`,
           );
         } else {
           assigneeCounts.set(
@@ -162,7 +162,7 @@ function validateWorkflow(workflow: TemplateWorkflow): {
     if (count > 1) {
       const user = getUserById(userId);
       warnings.push(
-        `${user?.name ?? userId} appears in ${count} approval steps. This is allowed but may be unintended.`,
+        `${user?.name ?? userId} appears ${count} times in the approval sequence. This is allowed but may be unintended.`,
       );
     }
   }

@@ -1,12 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { AssignedApproverSelect } from '@/components/template/AssignedApproverSelect';
+import { getGroupById } from '@/services/groupRepository';
 import { createStepId } from '@/services/templateNormalizer';
+import { getUserById } from '@/services/userRepository';
 import type { HierarchyApprovalStep, TemplateWorkflow, WorkflowType } from '@/types';
 import { reindexSteps } from '@/utils/templateValidation';
 
-/** Hierarchy steps are approvers. The label is stored, not chosen in the step card. */
+/** Hierarchy steps are approvers. The label is stored, not chosen in the row. */
 const HIERARCHY_ROLE_LABEL = 'Approver';
+const MAX_BATCH = 20;
 
 function createApprovalStep(stepOrder: number): HierarchyApprovalStep {
   return {
@@ -15,6 +18,27 @@ function createApprovalStep(stepOrder: number): HierarchyApprovalStep {
     roleLabel: HIERARCHY_ROLE_LABEL,
     assigneeUserId: '',
   };
+}
+
+function approverSummary(assigneeUserId: string): {
+  code: string;
+  name: string;
+  assigned: boolean;
+} {
+  const user = assigneeUserId ? getUserById(assigneeUserId) : undefined;
+  if (!user) return { code: 'ALL', name: 'Select employee...', assigned: false };
+  const code = getGroupById(user.groupId)?.code.trim().toUpperCase() || 'ALL';
+  return { code, name: user.name, assigned: true };
+}
+
+function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
+  const listRect = list.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  if (rowRect.top < listRect.top) {
+    list.scrollTop -= listRect.top - rowRect.top;
+  } else if (rowRect.bottom > listRect.bottom) {
+    list.scrollTop += rowRect.bottom - listRect.bottom;
+  }
 }
 
 interface ApprovalWorkflowBuilderProps {
@@ -28,8 +52,19 @@ export function ApprovalWorkflowBuilder({
   onChange,
   warnings = [],
 }: ApprovalWorkflowBuilderProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [scrollToId, setScrollToId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [addMultipleOpen, setAddMultipleOpen] = useState(false);
+  const [quantity, setQuantity] = useState('2');
+  const [quantityError, setQuantityError] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const addMultipleRef = useRef<HTMLDivElement>(null);
+
   const setType = (type: WorkflowType) => {
     if (type === 'review_checking') {
+      setExpandedId(null);
       onChange({ type: 'review_checking' });
       return;
     }
@@ -37,10 +72,11 @@ export function ApprovalWorkflowBuilder({
       onChange(workflow);
       return;
     }
-    onChange({
-      type: 'hierarchy_approval',
-      steps: [createApprovalStep(1)],
-    });
+    const first = createApprovalStep(1);
+    setExpandedId(first.id);
+    setScrollToId(first.id);
+    setFocusId(first.id);
+    onChange({ type: 'hierarchy_approval', steps: [first] });
   };
 
   const steps =
@@ -60,11 +96,39 @@ export function ApprovalWorkflowBuilder({
     });
   }, [workflow, onChange]);
 
+  useLayoutEffect(() => {
+    if (!scrollToId) return;
+    const list = listRef.current;
+    const row = rowRefs.current.get(scrollToId);
+    if (list && row) scrollRowIntoList(list, row);
+    setScrollToId(null);
+  }, [scrollToId, steps]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    setFocusId(null);
+  }, [focusId]);
+
+  useEffect(() => {
+    if (!addMultipleOpen) return undefined;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!addMultipleRef.current?.contains(event.target as Node)) {
+        setAddMultipleOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [addMultipleOpen]);
+
+  const commitSteps = (next: HierarchyApprovalStep[]) => {
+    onChange({
+      type: 'hierarchy_approval',
+      steps: next.map((step, index) => ({ ...step, stepOrder: index + 1 })),
+    });
+  };
+
   const updateStep = (index: number, patch: Partial<HierarchyApprovalStep>) => {
-    const next = steps.map((step, i) =>
-      i === index ? { ...step, ...patch } : step,
-    );
-    onChange({ type: 'hierarchy_approval', steps: reindexSteps(next) });
+    commitSteps(steps.map((step, i) => (i === index ? { ...step, ...patch } : step)));
   };
 
   const move = (index: number, direction: -1 | 1) => {
@@ -73,7 +137,35 @@ export function ApprovalWorkflowBuilder({
     const next = [...steps];
     const [item] = next.splice(index, 1);
     next.splice(target, 0, item);
-    onChange({ type: 'hierarchy_approval', steps: reindexSteps(next) });
+    commitSteps(next);
+  };
+
+  const remove = (index: number) => {
+    const removed = steps[index];
+    if (removed && expandedId === removed.id) setExpandedId(null);
+    commitSteps(steps.filter((_, i) => i !== index));
+  };
+
+  const addApprovers = (count: number) => {
+    const created = Array.from({ length: count }, (_, index) =>
+      createApprovalStep(steps.length + index + 1),
+    );
+    commitSteps([...steps, ...created]);
+    setExpandedId(created[0].id);
+    setScrollToId(created[0].id);
+    setFocusId(created[0].id);
+  };
+
+  const confirmAddMultiple = () => {
+    const count = Number(quantity);
+    if (!Number.isInteger(count) || count < 1 || count > MAX_BATCH) {
+      setQuantityError(`Enter a whole number from 1 to ${MAX_BATCH}.`);
+      return;
+    }
+    addApprovers(count);
+    setQuantity('2');
+    setQuantityError(null);
+    setAddMultipleOpen(false);
   };
 
   return (
@@ -83,8 +175,8 @@ export function ApprovalWorkflowBuilder({
           Approval workflow
         </h2>
         <p className="mt-1 text-sm text-brand-500">
-          Each template has exactly one workflow type. Hierarchy steps may include
-          approvers from any group.
+          Each template has exactly one workflow type. Hierarchy approvers may
+          come from any group.
         </p>
       </div>
 
@@ -133,43 +225,84 @@ export function ApprovalWorkflowBuilder({
           order.
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-brand-900">Approval steps</h3>
-            <button
-              type="button"
-              onClick={() =>
-                onChange({
-                  type: 'hierarchy_approval',
-                  steps: [...steps, createApprovalStep(steps.length + 1)],
-                })
-              }
-              className="inline-flex items-center gap-1.5 rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
-            >
-              <Plus size={14} />
-              Add step
-            </button>
-          </div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-brand-900">Approval sequence</h3>
 
           {steps.length === 0 ? (
             <p className="rounded-md border border-dashed border-brand-200 px-4 py-6 text-center text-sm text-brand-500">
-              Add at least one approval step before activating.
+              Add at least one approver before activating.
             </p>
           ) : (
-            <ol className="space-y-3">
-              {steps.map((step, index) => {
-                return (
-                  <li
-                    key={step.id}
-                    className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-brand-900">
-                        Step {step.stepOrder}
-                      </p>
-                      <div className="flex gap-1">
+            <div ref={listRef} className="max-h-72 overflow-y-auto pr-1">
+              <ol className="space-y-1.5">
+                {steps.map((step, index) => {
+                  const expanded = expandedId === step.id;
+                  const summary = approverSummary(step.assigneeUserId);
+                  return (
+                    <li
+                      key={step.id}
+                      ref={(node) => {
+                        if (node) rowRefs.current.set(step.id, node);
+                        else rowRefs.current.delete(step.id);
+                      }}
+                      className={[
+                        'flex flex-wrap items-center gap-2 rounded-md border bg-white px-2 py-1.5',
+                        expanded
+                          ? 'border-brand-400'
+                          : summary.assigned
+                            ? 'border-brand-100'
+                            : 'border-amber-300',
+                      ].join(' ')}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(expanded ? null : step.id)}
+                        className="w-[6.5rem] shrink-0 text-left text-sm font-medium text-brand-900"
+                        aria-expanded={expanded}
+                      >
+                        Approver {step.stepOrder}
+                      </button>
+
+                      <div className="min-w-[12rem] flex-1">
+                        {expanded ? (
+                          <AssignedApproverSelect
+                            assigneeUserId={step.assigneeUserId}
+                            autoFocus={focusId === step.id}
+                            onChange={(assigneeUserId) => {
+                              updateStep(index, { assigneeUserId });
+                              if (assigneeUserId) setExpandedId(null);
+                            }}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedId(step.id)}
+                            className="grid h-10 w-full grid-cols-[auto_minmax(0,1fr)] rounded-md border border-brand-200 bg-white text-left"
+                            aria-label={
+                              summary.assigned
+                                ? `Edit approver ${step.stepOrder}, ${summary.name}`
+                                : `Assign approver ${step.stepOrder}`
+                            }
+                          >
+                            <span className="flex items-center border-r border-brand-200 px-2.5 text-sm font-medium text-brand-900">
+                              {summary.code}
+                            </span>
+                            <span
+                              className={[
+                                'flex min-w-0 items-center truncate px-3 text-sm',
+                                summary.assigned ? 'text-brand-900' : 'text-brand-400',
+                              ].join(' ')}
+                            >
+                              {summary.assigned ? summary.name : 'Not assigned'}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="ml-auto flex shrink-0">
                         <button
                           type="button"
+                          aria-label={`Move approver ${step.stepOrder} up`}
                           disabled={index === 0}
                           onClick={() => move(index, -1)}
                           className="rounded p-1.5 text-brand-600 hover:bg-brand-50 disabled:opacity-40"
@@ -178,6 +311,7 @@ export function ApprovalWorkflowBuilder({
                         </button>
                         <button
                           type="button"
+                          aria-label={`Move approver ${step.stepOrder} down`}
                           disabled={index === steps.length - 1}
                           onClick={() => move(index, 1)}
                           className="rounded p-1.5 text-brand-600 hover:bg-brand-50 disabled:opacity-40"
@@ -186,36 +320,80 @@ export function ApprovalWorkflowBuilder({
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            onChange({
-                              type: 'hierarchy_approval',
-                              steps: reindexSteps(
-                                steps.filter((_, i) => i !== index),
-                              ),
-                            })
-                          }
+                          aria-label={`Remove approver ${step.stepOrder}`}
+                          onClick={() => remove(index)}
                           className="rounded p-1.5 text-red-600 hover:bg-red-50"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
-                    </div>
-                    <div className="mt-3">
-                      <span className="mb-1 block text-xs font-medium text-brand-600">
-                        Employee *
-                      </span>
-                      <AssignedApproverSelect
-                        assigneeUserId={step.assigneeUserId}
-                        onChange={(assigneeUserId) =>
-                          updateStep(index, { assigneeUserId })
-                        }
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
           )}
+
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+            <div ref={addMultipleRef} className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuantityError(null);
+                  setAddMultipleOpen((open) => !open);
+                }}
+                className="inline-flex items-center rounded-md border border-brand-200 bg-white px-3 py-1.5 text-sm font-medium text-brand-800 hover:bg-brand-50"
+                aria-expanded={addMultipleOpen}
+              >
+                Add multiple
+              </button>
+              {addMultipleOpen ? (
+                <div className="absolute right-0 bottom-full z-30 mb-2 w-60 rounded-md border border-brand-200 bg-white p-3 shadow-lg">
+                  <label className="block text-xs font-medium text-brand-700">
+                    Number of approvers
+                    <input
+                      type="number"
+                      min={1}
+                      max={MAX_BATCH}
+                      inputMode="numeric"
+                      value={quantity}
+                      onChange={(event) => {
+                        setQuantity(event.target.value);
+                        setQuantityError(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          confirmAddMultiple();
+                        }
+                      }}
+                      className="mt-1 w-full rounded-md border border-brand-200 px-3 py-1.5 text-sm text-brand-900"
+                    />
+                  </label>
+                  {quantityError ? (
+                    <p className="mt-1 text-xs text-red-600">{quantityError}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-brand-500">From 1 to {MAX_BATCH}.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={confirmAddMultiple}
+                    className="mt-2 w-full rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
+                  >
+                    Add
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => addApprovers(1)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
+            >
+              <Plus size={14} />
+              Add approver
+            </button>
+          </div>
         </div>
       )}
 
