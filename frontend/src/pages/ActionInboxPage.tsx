@@ -1,16 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Inbox } from 'lucide-react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AssignedRequestList } from '@/components/request/AssignedRequestList';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import {
-  canAccessActionInbox,
-  listCompletedInboxItems,
-  listPendingInboxItems,
-} from '@/services/inboxService';
+import { listCompletedInbox, listInbox } from '@/services/requestApi';
+import type { InboxCompletedItem, InboxPendingItem } from '@/services/inboxService';
 import { REQUEST_STATUSES, type RequestStatus } from '@/types';
+import { isApprover } from '@/utils/permissions';
 import { getRequestDisplayTitle } from '@/utils/requestTitle';
 
 type InboxTab = 'pending' | 'completed';
@@ -21,20 +19,59 @@ export function ActionInboxPage() {
   const [tab, setTab] = useState<InboxTab>('pending');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all');
+  const [pending, setPending] = useState<InboxPendingItem[] | null>(null);
+  const [completed, setCompleted] = useState<InboxCompletedItem[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const pending = useMemo(() => {
-    if (!user) return [];
-    return listPendingInboxItems(user.id);
-  }, [user, location.key]);
-
-  const completed = useMemo(() => {
-    if (!user) return [];
-    return listCompletedInboxItems(user.id);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setPending(null);
+    setCompleted(null);
+    void Promise.all([listInbox(), listCompletedInbox()]).then(([assigned, done]) => {
+      if (cancelled) return;
+      if (!assigned.ok || !done.ok) {
+        setPending([]);
+        setCompleted([]);
+        setLoadError(
+          !assigned.ok
+            ? assigned.error
+            : !done.ok
+              ? done.error
+              : 'The inbox could not be loaded.',
+        );
+        return;
+      }
+      setPending(assigned.data);
+      setCompleted(done.data);
+      setLoadError(null);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user, location.key]);
 
   if (!user) return null;
 
-  if (!canAccessActionInbox(user)) {
+  if (pending === null || completed === null) {
+    return (
+      <PageScroll>
+        <p className="text-sm text-brand-600">Loading inbox…</p>
+      </PageScroll>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <PageScroll>
+        <p className="text-sm text-red-600" role="alert">
+          {loadError}
+        </p>
+      </PageScroll>
+    );
+  }
+
+  if (!isApprover(user) && pending.length === 0 && completed.length === 0) {
     return <Navigate to={paths.requests} replace />;
   }
 

@@ -12,8 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import { setTemplateStatus } from '@/services/templateRepository';
-import { getManageableTemplatesForUser, getTemplateById } from '@/services/templateService';
+import { listManageableTemplates, setTemplateStatusRecord } from '@/services/templateApi';
 import { canAccessTemplateManagement } from '@/utils/templatePermissions';
 import {
   EMPTY_TEMPLATE_FILTERS,
@@ -21,6 +20,7 @@ import {
   hasActiveTemplateFilters,
   type TemplateListFilters,
 } from '@/utils/templateFilters';
+import type { FormTemplate } from '@/types';
 import { userHasRole } from '@/utils/permissions';
 
 function createdTemplateMessage(state: unknown): string | null {
@@ -46,11 +46,28 @@ export function TemplatesPage() {
     action: TemplateStatusAction;
   } | null>(null);
   const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [templates, setTemplates] = useState<FormTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const templates = useMemo(() => {
-    void refreshKey;
-    void location.key;
-    return getManageableTemplatesForUser(user);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setLoading(true);
+    void listManageableTemplates().then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setTemplates([]);
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+      setTemplates(result.data);
+      setError(null);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user, location.key, refreshKey]);
 
   const filtered = useMemo(
@@ -93,7 +110,9 @@ export function TemplatesPage() {
 
   const showGroupFilter = userHasRole(user, 'admin');
   const filtersActive = hasActiveTemplateFilters(filters);
-  const previewTemplate = previewId ? getTemplateById(previewId) : null;
+  const previewTemplate = previewId
+    ? (templates.find((template) => template.id === previewId) ?? null)
+    : null;
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
@@ -112,29 +131,29 @@ export function TemplatesPage() {
 
   const confirmStatusChange = () => {
     if (!statusAction) return;
+    const template = templates.find((item) => item.id === statusAction.id);
+    if (!template) return;
     setStatusSubmitting(true);
     setError(null);
     setMessage(null);
 
-    const nextStatus =
-      statusAction.action === 'activate' ? 'Active' : 'Inactive';
-    const result = setTemplateStatus(user, statusAction.id, nextStatus);
+    const nextStatus = statusAction.action === 'activate' ? 'Active' : 'Inactive';
+    void setTemplateStatusRecord(template, nextStatus).then((result) => {
+      setStatusSubmitting(false);
+      if (!result.ok) {
+        setError(result.error);
+        setStatusAction(null);
+        return;
+      }
 
-    setStatusSubmitting(false);
-
-    if (!result.ok) {
-      setError(result.error);
+      setMessage(
+        statusAction.action === 'activate'
+          ? `“${result.data.name}” activated.`
+          : `“${result.data.name}” deactivated.`,
+      );
       setStatusAction(null);
-      return;
-    }
-
-    setMessage(
-      statusAction.action === 'activate'
-        ? `“${result.template.name}” activated.`
-        : `“${result.template.name}” deactivated.`,
-    );
-    setStatusAction(null);
-    refresh();
+      refresh();
+    });
   };
 
   return (
@@ -171,7 +190,9 @@ export function TemplatesPage() {
           </div>
         ) : null}
 
-        {templates.length === 0 ? (
+        {loading ? (
+          <p className="text-sm text-brand-600">Loading templates…</p>
+        ) : templates.length === 0 ? (
           <div className="rounded-lg border border-dashed border-brand-200 bg-white px-6 py-14 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
               <FileStack size={22} />

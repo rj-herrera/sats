@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApprovalWorkflowPreview } from '@/components/request/ApprovalWorkflowPreview';
@@ -7,16 +7,12 @@ import { RequestFormActions } from '@/components/request/RequestFormActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import { resubmitRequest } from '@/services/requestLifecycleService';
-import { getRequestById } from '@/services/requestRepository';
-import type { AttachmentMetadata, FieldValue } from '@/types';
+import { getRequest, resubmitSubmittedRequest } from '@/services/requestApi';
+import type { FieldValue, SubmittedRequest } from '@/types';
 import { getRoleLabel } from '@/utils/permissions';
 import { canRequesterEditResubmit } from '@/utils/requestOwnership';
 import { getLatestReturnInfo } from '@/utils/returnInfo';
-import {
-  buildAttachmentMetadata,
-  validateRevisionForm,
-} from '@/utils/formValidation';
+import { validateRevisionForm } from '@/utils/formValidation';
 import { formatDateTime } from '@/utils/formatDisplay';
 
 export function EditRequestPage() {
@@ -24,7 +20,9 @@ export function EditRequestPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const request = useMemo(() => (id ? getRequestById(id) : undefined), [id]);
+  const [request, setRequest] = useState<SubmittedRequest | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [values, setValues] = useState<Record<string, FieldValue>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
@@ -36,21 +34,55 @@ export function EditRequestPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!id) {
+      setRequest(null);
+      setLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    setLoaded(false);
+    void getRequest(id).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setRequest(null);
+        setLoadError(result.error);
+        setLoaded(true);
+        return;
+      }
+      setRequest(result.data);
+      setLoadError(null);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
     if (!request) return;
     setValues({ ...request.fieldValues });
     setFiles({});
     setRemovedAttachmentFieldIds(new Set());
     setFieldErrors({});
     setFormError(null);
-  }, [request?.id]);
+  }, [request]);
 
   if (!user) return null;
+
+  if (!loaded) {
+    return (
+      <PageScroll>
+        <p className="text-sm text-brand-600">Loading request…</p>
+      </PageScroll>
+    );
+  }
 
   if (!request) {
     return (
       <PageScroll>
         <div className="mx-auto max-w-lg rounded-lg border border-brand-100 bg-white px-6 py-12 text-center shadow-sm">
           <h1 className="text-xl font-semibold text-brand-900">Request not found</h1>
+          {loadError ? <p className="mt-2 text-sm text-brand-600">{loadError}</p> : null}
           <Link
             to={paths.requests}
             className="mt-6 inline-block rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
@@ -118,44 +150,33 @@ export function EditRequestPage() {
     setFormError(validation.formError);
     if (!validation.valid) return;
 
+    if (Object.values(files).some((file) => file !== null)) {
+      setFormError('File uploads are not available yet.');
+      return;
+    }
+    if (!request.rowVersion) {
+      setFormError('This request is missing a version. Reload and try again.');
+      return;
+    }
+
     setSubmitting(true);
     setFormError(null);
 
-    try {
-      const attachments: AttachmentMetadata[] = (
-        await Promise.all(
-          fields.map(async (field) => {
-            if (field.type !== 'file') return [];
-            const newFile = files[field.id];
-            if (newFile) return [await buildAttachmentMetadata(field.id, newFile)];
-            if (removedAttachmentFieldIds.has(field.id)) return [];
-            const existing = request.attachments.find((a) => a.fieldId === field.id);
-            return existing ? [existing] : [];
-          }),
-        )
-      ).flat();
+    const result = await resubmitSubmittedRequest(request.id, {
+      fieldValues: values,
+      rowVersion: request.rowVersion,
+    });
+    setSubmitting(false);
 
-      const result = resubmitRequest({
-        requestId: request.id,
-        actorUserId: user.id,
-        fieldValues: values,
-        attachments,
-      });
-
-      if (!result.ok) {
-        setFormError(result.error);
-        return;
-      }
-
-      navigate(paths.requestDetails(result.request.id), {
-        replace: true,
-        state: { resubmitted: true },
-      });
-    } catch {
-      setFormError('Could not prepare the attachment for resubmit. Please try again.');
-    } finally {
-      setSubmitting(false);
+    if (!result.ok) {
+      setFormError(result.error);
+      return;
     }
+
+    navigate(paths.requestDetails(result.data.id), {
+      replace: true,
+      state: { resubmitted: true },
+    });
   };
 
   return (

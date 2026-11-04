@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Inbox } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { RequestFilters } from '@/components/request/RequestFilters';
 import { RequestList } from '@/components/request/RequestList';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
-import { listRequestsByRequester } from '@/services/requestRepository';
+import { listMyRequests } from '@/services/requestApi';
+import type { SubmittedRequest } from '@/types';
 import {
   EMPTY_REQUEST_FILTERS,
   filterRequests,
@@ -17,11 +18,29 @@ export function MyRequestsPage() {
   const { user } = useAuth();
   const location = useLocation();
   const [filters, setFilters] = useState<RequestListFilters>(EMPTY_REQUEST_FILTERS);
+  const [myRequests, setMyRequests] = useState<SubmittedRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Re-read localStorage when navigating back to this page
-  const myRequests = useMemo(() => {
-    if (!user) return [];
-    return listRequestsByRequester(user.id);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setLoading(true);
+    void listMyRequests().then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setMyRequests([]);
+        setLoadError(result.error);
+        setLoading(false);
+        return;
+      }
+      setMyRequests(result.data);
+      setLoadError(null);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user, location.key]);
 
   const filtered = useMemo(
@@ -45,7 +64,15 @@ export function MyRequestsPage() {
           </p>
         </div>
 
-        {myRequests.length === 0 ? (
+        {loadError ? (
+          <p className="text-sm text-red-600" role="alert">
+            {loadError}
+          </p>
+        ) : null}
+
+        {loading ? (
+          <p className="text-sm text-brand-600">Loading requests…</p>
+        ) : myRequests.length === 0 ? (
           <div className="rounded-lg border border-dashed border-brand-200 bg-white px-6 py-14 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
               <Inbox size={22} aria-hidden />

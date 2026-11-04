@@ -278,10 +278,8 @@ function processHierarchy(
 }
 
 /**
- * Centralized workflow decision processor.
- * Re-validates authorization and state before persisting.
- * Mock localStorage is not secure against client-side tampering —
- * the future PHP backend must enforce these rules server-side.
+ * Local workflow rules covered by unit tests.
+ * Review screens record decisions through requestApi, which calls the PHP API.
  */
 export function processRequestDecision(
   input: ProcessDecisionInput,

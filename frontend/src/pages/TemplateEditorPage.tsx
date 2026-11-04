@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApprovalWorkflowBuilder } from '@/components/template/ApprovalWorkflowBuilder';
@@ -12,12 +12,8 @@ import { TemplateStatusBadge } from '@/components/template/TemplateStatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import {
-  createTemplate,
-  updateTemplate,
-} from '@/services/templateRepository';
 import { createFieldId } from '@/services/templateNormalizer';
-import { getTemplateById } from '@/services/templateService';
+import { createTemplateRecord, getTemplate, updateTemplateRecord } from '@/services/templateApi';
 import type {
   FormFieldDefinition,
   FormTemplate,
@@ -178,18 +174,14 @@ export function TemplateEditorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const existing = useMemo(
-    () => (id ? getTemplateById(id) : undefined),
-    [id],
-  );
+  const [existing, setExisting] = useState<FormTemplate | undefined>();
+  const [templateLoaded, setTemplateLoaded] = useState(isNew);
+  const existingRef = useRef(existing);
+  existingRef.current = existing;
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [state, setState] = useState<EditorState | null>(() =>
-    user ? buildInitialState(user, existing) : null,
-  );
-  const [baseline, setBaseline] = useState(() =>
-    user ? JSON.stringify(persistedEditorState(buildInitialState(user, existing))) : '',
-  );
+  const [state, setState] = useState<EditorState | null>(null);
+  const [baseline, setBaseline] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -201,15 +193,37 @@ export function TemplateEditorPage() {
   const draftKey = `${user?.id ?? ''}:${id ?? 'new'}`;
 
   useEffect(() => {
+    if (!id) {
+      setExisting(undefined);
+      setTemplateLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    setTemplateLoaded(false);
+    void getTemplate(id).then((result) => {
+      if (cancelled) return;
+      setExisting(result.ok ? (result.data ?? undefined) : undefined);
+      if (!result.ok) setError(result.error);
+      setTemplateLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
     if (!user) return;
-    if (!isNew && existing && !canManageTemplate(user, existing)) return;
-    const initial = buildInitialState(user, existing);
+    if (!isNew && !templateLoaded) return;
+    const loaded = existingRef.current;
+    if (!isNew && !loaded) return;
+    if (!isNew && !canManageTemplate(user, loaded)) return;
+    const initial = buildInitialState(user, isNew ? undefined : loaded);
     setState(initial);
     setBaseline(JSON.stringify(persistedEditorState(initial)));
     setStepIndex(0);
     setError(null);
     setMessage(null);
-  }, [draftKey]);
+  }, [draftKey, templateLoaded]);
 
   const dirty = state
     ? JSON.stringify(persistedEditorState(state)) !== baseline
@@ -236,6 +250,14 @@ export function TemplateEditorPage() {
     return (
       <PageScroll>
         <Denied message="You do not have permission to manage templates." />
+      </PageScroll>
+    );
+  }
+
+  if (!isNew && !templateLoaded) {
+    return (
+      <PageScroll>
+        <p className="text-sm text-brand-600">Loading template…</p>
       </PageScroll>
     );
   }
@@ -272,7 +294,7 @@ export function TemplateEditorPage() {
     setMessage(null);
   };
 
-  const persist = (status: FormTemplate['status']) => {
+  const persist = async (status: FormTemplate['status']) => {
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -321,8 +343,12 @@ export function TemplateEditorPage() {
     };
 
     const result = isNew
-      ? createTemplate(user, payload)
-      : updateTemplate(user, existing!.id, payload);
+      ? await createTemplateRecord({ ...payload, status })
+      : await updateTemplateRecord(existing!.id, {
+          ...payload,
+          status,
+          version: existing!.version,
+        });
 
     setSaving(false);
 
@@ -330,6 +356,8 @@ export function TemplateEditorPage() {
       setError(result.error);
       return;
     }
+
+    setExisting(result.data);
 
     if (status === 'Active') {
       navigate(paths.templates, {
@@ -339,7 +367,7 @@ export function TemplateEditorPage() {
       return;
     }
 
-    const nextState = buildInitialState(user, result.template);
+    const nextState = buildInitialState(user, result.data);
     setState(nextState);
     setBaseline(JSON.stringify(persistedEditorState(nextState)));
     setMessage('Template saved as Inactive.');

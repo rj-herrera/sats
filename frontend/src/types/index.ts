@@ -86,6 +86,8 @@ export interface User {
   /** Human-readable employee number; unique */
   employeeId: string;
   name: string;
+  /** Job title from the company directory (`designation_list.name`). */
+  designation?: string;
   email: string;
   groupId: string;
   /**

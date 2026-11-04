@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ApprovalWorkflowPreview } from '@/components/request/ApprovalWorkflowPreview';
 import { DynamicRequestForm } from '@/components/request/DynamicRequestForm';
 import { RequestFormActions } from '@/components/request/RequestFormActions';
@@ -6,42 +6,52 @@ import { ReviewerSelector } from '@/components/request/ReviewerSelector';
 import { SubmissionConfirmation } from '@/components/request/SubmissionConfirmation';
 import { TemplateSelector } from '@/components/request/TemplateSelector';
 import { useAuth } from '@/contexts/AuthContext';
-import { createRequest } from '@/services/requestRepository';
+import { createSubmittedRequest } from '@/services/requestApi';
+import { listAvailableTemplates } from '@/services/templateApi';
 import {
-  getAvailableTemplatesForUser,
-  getTemplateById,
-} from '@/services/templateService';
-import {
-  buildReviewerSnapshots,
+  listSelectableEmployees,
   listSelectableReviewers,
   resolveHierarchyForTemplate,
 } from '@/services/workflowService';
 import type { FieldValue, FormTemplate } from '@/types';
-import {
-  buildAttachmentMetadata,
-  emptyValuesForTemplate,
-  validateRequestForm,
-} from '@/utils/formValidation';
+import { emptyValuesForTemplate, validateRequestForm } from '@/utils/formValidation';
 
 export function RequestFormPage() {
   const { user } = useAuth();
 
-  const availableTemplates = useMemo(
-    () => getAvailableTemplatesForUser(user),
-    [user],
-  );
+  const [availableTemplates, setAvailableTemplates] = useState<FormTemplate[]>([]);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
 
   const [templateId, setTemplateId] = useState('');
   const [values, setValues] = useState<Record<string, FieldValue>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [selectedReviewerIds, setSelectedReviewerIds] = useState<string[]>([]);
+  const [reviewerUnfinished, setReviewerUnfinished] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submittedNumber, setSubmittedNumber] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void listAvailableTemplates().then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setAvailableTemplates([]);
+        setTemplatesError(result.error);
+        return;
+      }
+      setAvailableTemplates(result.data);
+      setTemplatesError(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const selectedTemplate: FormTemplate | undefined = templateId
-    ? getTemplateById(templateId)
+    ? availableTemplates.find((template) => template.id === templateId)
     : undefined;
 
   const hierarchyResult = useMemo(() => {
@@ -52,14 +62,16 @@ export function RequestFormPage() {
   }, [selectedTemplate]);
 
   const reviewerCandidates = useMemo(() => {
-    if (!user) return [];
+    if (!user || selectedTemplate?.workflow.type !== 'review_checking') return [];
+    if (selectedTemplate.scope === 'generic') return listSelectableEmployees(user);
     return listSelectableReviewers(user);
-  }, [user]);
+  }, [user, selectedTemplate]);
 
   const resetForTemplate = (template: FormTemplate | undefined) => {
     setFieldErrors({});
     setFormError(null);
     setSelectedReviewerIds([]);
+    setReviewerUnfinished(false);
     setFiles({});
     if (template) {
       setValues(emptyValuesForTemplate(template));
@@ -70,7 +82,9 @@ export function RequestFormPage() {
 
   const handleTemplateChange = (nextId: string) => {
     setTemplateId(nextId);
-    const template = nextId ? getTemplateById(nextId) : undefined;
+    const template = nextId
+      ? availableTemplates.find((item) => item.id === nextId)
+      : undefined;
     resetForTemplate(template);
   };
 
@@ -98,10 +112,14 @@ export function RequestFormPage() {
       selectedReviewerIds,
     });
 
-    setFieldErrors(validation.fieldErrors);
-    setFormError(validation.formError);
+    const reviewerError = reviewerUnfinished
+      ? 'Choose an employee for each reviewer row, or remove the unfinished row.'
+      : validation.formError;
 
-    if (!validation.valid) {
+    setFieldErrors(validation.fieldErrors);
+    setFormError(reviewerError);
+
+    if (!validation.valid || reviewerError) {
       return;
     }
 
@@ -117,49 +135,26 @@ export function RequestFormPage() {
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const attachmentMeta = (
-        await Promise.all(
-          selectedTemplate.fields.map(async (field) => {
-            if (field.type !== 'file') return [];
-            const file = files[field.id];
-            return file ? [await buildAttachmentMetadata(field.id, file)] : [];
-          }),
-        )
-      ).flat();
-
-      const reviewers =
-        selectedTemplate.workflow.type === 'review_checking'
-          ? buildReviewerSnapshots(selectedReviewerIds)
-          : null;
-
-      const approvalSteps =
-        selectedTemplate.workflow.type === 'hierarchy_approval' && hierarchyResult?.ok
-          ? hierarchyResult.steps
-          : null;
-
-      const saved = createRequest({
-        templateId: selectedTemplate.id,
-        templateName: selectedTemplate.name,
-        workflowType: selectedTemplate.workflow.type,
-        requesterId: user.id,
-        requesterName: user.name,
-        requesterGroupId: user.groupId,
-        requesterGroupName: user.groupName,
-        fieldValues: values,
-        fieldDefinitions: selectedTemplate.fields,
-        attachments: attachmentMeta,
-        reviewers,
-        approvalSteps,
-      });
-
-      setSubmittedNumber(saved.requestNumber);
-    } catch {
-      setFormError('Could not save the request to local storage. Please try again.');
-    } finally {
-      setSubmitting(false);
+    if (Object.values(files).some((file) => file !== null)) {
+      setFormError('File uploads are not available yet.');
+      return;
     }
+
+    setSubmitting(true);
+    const saved = await createSubmittedRequest({
+      templateId: selectedTemplate.id,
+      fieldValues: values,
+      reviewerIds:
+        selectedTemplate.workflow.type === 'review_checking' ? selectedReviewerIds : undefined,
+    });
+    setSubmitting(false);
+
+    if (!saved.ok) {
+      setFormError(saved.error);
+      return;
+    }
+
+    setSubmittedNumber(saved.data.requestNumber);
   };
 
   if (!user) {
@@ -196,6 +191,11 @@ export function RequestFormPage() {
           onChange={handleTemplateChange}
           description={selectedTemplate?.description}
         />
+        {templatesError ? (
+          <p className="text-sm text-red-600" role="alert">
+            {templatesError}
+          </p>
+        ) : null}
 
         {selectedTemplate && (
           <>
@@ -228,11 +228,18 @@ export function RequestFormPage() {
               <aside className="min-w-0 lg:col-span-1">
                 {selectedTemplate.workflow.type === 'review_checking' ? (
                   <ReviewerSelector
+                    key={selectedTemplate.id}
                     candidates={reviewerCandidates}
-                    selectedIds={selectedReviewerIds}
+                    audience={selectedTemplate.scope === 'generic' ? 'employee' : 'approver'}
+                    initialGroupId={
+                      selectedTemplate.scope === 'group'
+                        ? (selectedTemplate.owningGroupId ?? '')
+                        : ''
+                    }
                     error={formError}
-                    onChange={(ids) => {
+                    onChange={(ids, unfinished) => {
                       setSelectedReviewerIds(ids);
+                      setReviewerUnfinished(unfinished);
                       setFormError(null);
                     }}
                   />

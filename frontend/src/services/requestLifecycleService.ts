@@ -68,8 +68,9 @@ function snapshotClosedRevision(request: SubmittedRequest): RequestRevision {
  * Resubmit a Returned request: archive the current revision, increment,
  * reset workflow, set Pending. Failed validation must not call this.
  *
- * localStorage is not transactional — the future PHP backend must enforce
- * ownership, Returned status, and revision integrity server-side.
+ * Local lifecycle rules covered by unit tests. Screens resubmit and cancel
+ * through requestApi. The PHP API enforces ownership, Returned status, and
+ * revision integrity.
  */
 export function resubmitRequest(input: ResubmitRequestInput): LifecycleResult {
   const request = getRequestById(input.requestId);

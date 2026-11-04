@@ -12,9 +12,7 @@ import { SubmittedFieldValues } from '@/components/request/SubmittedFieldValues'
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import { processRequestDecision } from '@/services/decisionService';
-import { getRequestById } from '@/services/requestRepository';
-import { getTemplateById } from '@/services/templateService';
+import { getRequest, submitDecision } from '@/services/requestApi';
 import type { DecisionType, SubmittedRequest } from '@/types';
 import {
   explainWhyCannotAct,
@@ -30,7 +28,9 @@ export function ReviewPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [request, setRequest] = useState<SubmittedRequest | undefined>();
+  const [request, setRequest] = useState<SubmittedRequest | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [decision, setDecision] = useState<DecisionType | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -38,22 +38,45 @@ export function ReviewPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setRequest(id ? getRequestById(id) : undefined);
     setSuccessMessage(null);
     setDialogOpen(false);
     setDecision(null);
     setDialogError(null);
+    if (!id) {
+      setRequest(null);
+      setLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    setLoaded(false);
+    void getRequest(id).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setRequest(null);
+        setLoadError(result.error);
+        setLoaded(true);
+        return;
+      }
+      setRequest(result.data);
+      setLoadError(null);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  const fields = useMemo(() => {
-    if (!request) return [];
-    if (request.fieldDefinitions && request.fieldDefinitions.length > 0) {
-      return request.fieldDefinitions;
-    }
-    return getTemplateById(request.templateId)?.fields ?? [];
-  }, [request]);
+  const fields = useMemo(() => request?.fieldDefinitions ?? [], [request]);
 
   if (!user) return null;
+
+  if (!loaded) {
+    return (
+      <PageScroll>
+        <p className="text-sm text-brand-600">Loading request…</p>
+      </PageScroll>
+    );
+  }
 
   if (!request) {
     return (
@@ -61,7 +84,7 @@ export function ReviewPage() {
         <div className="mx-auto max-w-lg rounded-lg border border-brand-100 bg-white px-6 py-12 text-center shadow-sm">
           <h1 className="text-xl font-semibold text-brand-900">Request not found</h1>
           <p className="mt-2 text-sm text-brand-600">
-            This request does not exist or is no longer available.
+            {loadError ?? 'This request does not exist or is no longer available.'}
           </p>
           <Link
             to={paths.inbox}
@@ -93,38 +116,36 @@ export function ReviewPage() {
   };
 
   const handleConfirm = (comment: string) => {
-    if (!decision) return;
+    if (!decision || !request.rowVersion) return;
     setSubmitting(true);
     setDialogError(null);
 
-    const result = processRequestDecision({
-      requestId: request.id,
-      actorUserId: user.id,
+    void submitDecision(request.id, {
       decision,
       comment,
+      rowVersion: request.rowVersion,
+    }).then((result) => {
+      setSubmitting(false);
+      if (!result.ok) {
+        setDialogError(result.error);
+        return;
+      }
+
+      setRequest(result.data);
+      setDialogOpen(false);
+      setDecision(null);
+      setSuccessMessage(
+        decision === 'approve'
+          ? 'Decision recorded successfully.'
+          : decision === 'reject'
+            ? 'Request rejected.'
+            : 'Request returned for revision.',
+      );
+
+      window.setTimeout(() => {
+        navigate(paths.inbox);
+      }, 900);
     });
-
-    setSubmitting(false);
-
-    if (!result.ok) {
-      setDialogError(result.error);
-      return;
-    }
-
-    setRequest(result.request);
-    setDialogOpen(false);
-    setDecision(null);
-    setSuccessMessage(
-      decision === 'approve'
-        ? 'Decision recorded successfully.'
-        : decision === 'reject'
-          ? 'Request rejected.'
-          : 'Request returned for revision.',
-    );
-
-    window.setTimeout(() => {
-      navigate(paths.inbox);
-    }, 900);
   };
 
   return (

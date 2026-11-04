@@ -1,6 +1,8 @@
 -- Template identity, immutable versions, and group sharing.
 -- Group ids are the decimal strings of group_list.id.
 -- Run after database/sats_roles.sql.
+-- Re-running this file is safe. The statements below also insert the default
+-- For Review/Checking template when that shared template is not already present.
 
 USE sats;
 
@@ -58,3 +60,87 @@ CREATE TABLE IF NOT EXISTS template_allowed_groups (
   CONSTRAINT fk_template_allowed_groups_template
     FOREIGN KEY (template_id) REFERENCES templates (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Shared default template. No allowed-group rows means every group may use it.
+-- The author is the earliest active administrator. A deployment with no
+-- administrator yet still receives the template.
+SET @seed_author := (
+  SELECT employee_id
+  FROM sats_role_assignments
+  WHERE role_code = 'ADMIN' AND is_active = 1
+  ORDER BY assigned_at, id
+  LIMIT 1
+);
+SET @seed_author := IFNULL(@seed_author, 'system');
+SET @seed_now := UTC_TIMESTAMP(6);
+
+INSERT INTO templates (
+  name, description, scope, owning_group_id, status,
+  current_version_number, workflow_type, created_by, created_at, updated_by, updated_at
+)
+SELECT
+  'For Review/Checking',
+  'Shared template for simple document or work-item review. Available to all groups. You choose one or more reviewers when submitting.',
+  'generic',
+  NULL,
+  'Active',
+  1,
+  'review_checking',
+  @seed_author,
+  @seed_now,
+  @seed_author,
+  @seed_now
+FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM templates
+  WHERE name = 'For Review/Checking' AND scope = 'generic'
+);
+
+INSERT INTO template_versions (
+  template_id, version_number, name, description, workflow_type,
+  fields_json, workflow_json, created_by, created_at
+)
+SELECT
+  t.id,
+  1,
+  t.name,
+  t.description,
+  'review_checking',
+  JSON_ARRAY(
+    JSON_OBJECT(
+      'id', 'request_title',
+      'label', 'Request Title',
+      'type', 'text',
+      'required', TRUE,
+      'placeholder', 'Short title for this request',
+      'maxLength', 120
+    ),
+    JSON_OBJECT(
+      'id', 'description',
+      'label', 'Description / Details',
+      'type', 'textarea',
+      'required', TRUE,
+      'placeholder', 'Describe what needs to be reviewed',
+      'maxLength', 2000
+    ),
+    JSON_OBJECT(
+      'id', 'attachment',
+      'label', 'Attachment',
+      'type', 'file',
+      'required', FALSE,
+      'accept', '.pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx,.xls',
+      'maxFileSizeMb', 5
+    )
+  ),
+  JSON_OBJECT('type', 'review_checking'),
+  t.created_by,
+  t.created_at
+FROM templates t
+WHERE t.name = 'For Review/Checking'
+  AND t.scope = 'generic'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM template_versions v
+    WHERE v.template_id = t.id AND v.version_number = 1
+  );

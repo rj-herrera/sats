@@ -9,8 +9,8 @@ import {
 } from './requestNormalizer';
 
 /**
- * Centralized mock request persistence (localStorage).
- * Replace with PHP API calls in a later phase.
+ * Local request store used by the workflow unit tests.
+ * Screens load and save requests through requestApi.
  */
 
 const STORAGE_KEY = 'sats.mock.requests';

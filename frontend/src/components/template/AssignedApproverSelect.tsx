@@ -5,8 +5,6 @@ import { getGroupById, listActiveGroups } from '@/services/groupRepository';
 import { getUserById, listAssignableUsers } from '@/services/userRepository';
 import type { User } from '@/types';
 
-const ALL_GROUPS = '__all__';
-
 interface AssignedApproverSelectProps {
   assigneeUserId: string;
   onChange: (assigneeUserId: string) => void;
@@ -21,7 +19,7 @@ interface GroupOption {
 }
 
 function employeeBelongsToGroup(user: User, groupId: string): boolean {
-  if (groupId === ALL_GROUPS) return true;
+  if (!groupId) return false;
   if (user.groupId === groupId) return true;
   return user.groupIds?.includes(groupId) ?? false;
 }
@@ -50,7 +48,7 @@ function groupOptions(assignee: User | undefined): GroupOption[] {
     }))
     .sort((a, b) => a.code.localeCompare(b.code) || a.name.localeCompare(b.name));
 
-  return [{ id: ALL_GROUPS, code: 'ALL', name: 'All groups' }, ...options];
+  return options;
 }
 
 function menuStyleFor(anchor: HTMLElement, minWidth: number): CSSProperties {
@@ -75,6 +73,7 @@ function menuStyleFor(anchor: HTMLElement, minWidth: number): CSSProperties {
 }
 
 function employeesInGroup(groupId: string, assigneeUserId: string): User[] {
+  if (!groupId) return [];
   const people = listAssignableUsers().filter((user) =>
     employeeBelongsToGroup(user, groupId),
   );
@@ -101,7 +100,7 @@ export function AssignedApproverSelect({
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const assignee = assigneeUserId ? getUserById(assigneeUserId) : undefined;
   const options = useMemo(() => groupOptions(assignee), [assignee]);
-  const [groupId, setGroupId] = useState(ALL_GROUPS);
+  const [groupId, setGroupId] = useState(() => assignee?.groupId ?? '');
   const [open, setOpen] = useState<'group' | 'employee' | null>(null);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -113,10 +112,13 @@ export function AssignedApproverSelect({
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return employees;
-    return employees.filter((user) => user.name.toLowerCase().includes(q));
+    return employees.filter((user) => {
+      const haystack = `${user.name} ${user.designation ?? ''}`.toLowerCase();
+      return haystack.includes(q);
+    });
   }, [employees, query]);
 
-  const selectedGroup = options.find((option) => option.id === groupId) ?? options[0];
+  const selectedGroup = options.find((option) => option.id === groupId);
 
   useLayoutEffect(() => {
     if (!open) return undefined;
@@ -150,8 +152,10 @@ export function AssignedApproverSelect({
   }, [open]);
 
   useEffect(() => {
-    if (autoFocus) employeeButtonRef.current?.focus();
-  }, [autoFocus]);
+    if (!autoFocus) return;
+    if (groupId) employeeButtonRef.current?.focus();
+    else groupButtonRef.current?.focus();
+  }, [autoFocus, groupId]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -176,24 +180,27 @@ export function AssignedApproverSelect({
     <div ref={rootRef} className="relative">
       <div
         className={[
-          'grid grid-cols-[auto_minmax(0,1fr)] rounded-md border bg-white',
+          'flex overflow-hidden rounded-md border bg-white',
           open
             ? 'border-brand-500 ring-2 ring-brand-500/20'
             : 'border-brand-200',
         ].join(' ')}
       >
-        <div className="relative border-r border-brand-200">
+        <div className="relative shrink-0 border-r border-brand-200">
           <button
             ref={groupButtonRef}
             type="button"
             aria-haspopup="listbox"
             aria-expanded={open === 'group'}
-            aria-label={`Group ${selectedGroup?.code ?? 'ALL'}`}
-            title={selectedGroup?.name ?? 'All groups'}
+            aria-label={selectedGroup ? selectedGroup.name : 'Select group'}
+            title={selectedGroup?.name}
             onClick={() => setOpen((current) => (current === 'group' ? null : 'group'))}
-            className="flex h-10 min-w-[4.5rem] items-center justify-between gap-1.5 rounded-l-md px-2.5 text-sm font-medium text-brand-900 hover:bg-brand-50"
+            className={[
+              'flex h-10 items-center justify-between gap-1 px-2 text-sm hover:bg-brand-50',
+              selectedGroup ? 'font-medium text-brand-900' : 'text-brand-400',
+            ].join(' ')}
           >
-            <span>{selectedGroup?.code ?? 'ALL'}</span>
+            <span>{selectedGroup?.code ?? 'Group'}</span>
             <ChevronDown
               size={16}
               className={[
@@ -241,7 +248,7 @@ export function AssignedApproverSelect({
             : null}
         </div>
 
-        <div className="relative min-w-0">
+        <div className="relative min-w-0 flex-1">
           <button
             ref={employeeButtonRef}
             type="button"
@@ -250,18 +257,19 @@ export function AssignedApproverSelect({
             aria-expanded={open === 'employee'}
             aria-controls={listId}
             aria-autocomplete="list"
-            onClick={() =>
-              setOpen((current) => (current === 'employee' ? null : 'employee'))
-            }
-            className="flex h-10 w-full items-center justify-between gap-2 rounded-r-md px-3 text-left text-sm hover:bg-brand-50"
+            disabled={!groupId}
+            onClick={() => {
+              if (!groupId) return;
+              setOpen((current) => (current === 'employee' ? null : 'employee'));
+            }}
+            className={[
+              'flex h-10 w-full items-center justify-between gap-2 px-3 text-left text-sm',
+              groupId ? 'hover:bg-brand-50' : 'cursor-not-allowed bg-brand-50',
+              assignee ? 'text-brand-900' : 'text-brand-400',
+            ].join(' ')}
           >
-            <span
-              className={[
-                'min-w-0 truncate',
-                assignee ? 'text-brand-900' : 'text-brand-400',
-              ].join(' ')}
-            >
-              {assignee?.name ?? 'Select employee...'}
+            <span className="min-w-0 truncate">
+              {assignee?.name ?? (groupId ? 'Select employee' : 'Select a group first')}
             </span>
             <ChevronDown
               size={16}
@@ -340,7 +348,16 @@ export function AssignedApproverSelect({
                             active || selected ? 'bg-brand-50' : 'hover:bg-brand-50',
                           ].join(' ')}
                         >
-                          <span className="min-w-0 truncate">{user.name}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-brand-900">
+                              {user.name}
+                            </span>
+                            {user.designation?.trim() ? (
+                              <span className="block truncate text-xs text-brand-500">
+                                {user.designation.trim()}
+                              </span>
+                            ) : null}
+                          </span>
                           {selected ? (
                             <Check size={16} className="shrink-0 text-brand-700" aria-hidden />
                           ) : null}

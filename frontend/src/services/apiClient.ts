@@ -25,6 +25,27 @@ export function apiPost(path: string, body: unknown): Promise<{ status: number; 
   });
 }
 
+export function apiPut(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+  return apiSend(path, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+export function messageFromApi(status: number, body: unknown, fallback: string): string {
+  if (status === 0) return 'The server could not be reached.';
+  if (body && typeof body === 'object' && 'error' in body) {
+    const error = (body as { error: unknown }).error;
+    if (typeof error === 'string' && error.trim() !== '') return error;
+  }
+  return fallback;
+}
+
 export async function apiGet(path: string): Promise<{ status: number; body: unknown }> {
   return apiSend(path, {
     credentials: 'include',

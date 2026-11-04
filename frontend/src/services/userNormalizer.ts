@@ -65,6 +65,10 @@ export function normalizeUser(
         ? u.employeeId.trim()
         : u.id.replace(/^usr-/, 'EMP-').toUpperCase(),
     name: u.name.trim(),
+    designation:
+      typeof u.designation === 'string' && u.designation.trim()
+        ? u.designation.trim()
+        : undefined,
     email:
       typeof u.email === 'string' && u.email.trim()
         ? u.email.trim()

@@ -13,8 +13,8 @@ import {
 } from '@/utils/templateValidation';
 
 /**
- * Centralized template persistence (localStorage).
- * Seeded once from MOCK_TEMPLATES. Demonstrative only — PHP must enforce auth.
+ * Local template store. Template screens load and save through templateApi.
+ * Seeded once from MOCK_TEMPLATES for unit tests and leftover callers.
  */
 
 const STORAGE_KEY = 'sats.mock.templates';

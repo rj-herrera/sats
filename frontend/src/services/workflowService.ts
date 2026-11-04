@@ -113,6 +113,11 @@ export function listSelectableReviewers(requester: User): User[] {
   );
 }
 
+/** Every active employee who can review a shared template (excludes requester). */
+export function listSelectableEmployees(requester: User): User[] {
+  return listAssignableUsers().filter((u) => u.id !== requester.id);
+}
+
 export function buildReviewerSnapshots(userIds: string[]): ReviewerSnapshot[] {
   const unique = [...new Set(userIds)];
   const snapshots: ReviewerSnapshot[] = [];

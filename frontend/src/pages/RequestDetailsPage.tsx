@@ -11,10 +11,8 @@ import { SubmittedFieldValues } from '@/components/request/SubmittedFieldValues'
 import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import { canAccessActionInbox } from '@/services/inboxService';
-import { cancelRequest } from '@/services/requestLifecycleService';
-import { getRequestById } from '@/services/requestRepository';
-import { getTemplateById } from '@/services/templateService';
+import { usePermissions } from '@/hooks/usePermissions';
+import { cancelSubmittedRequest, getRequest } from '@/services/requestApi';
 import type { SubmittedRequest } from '@/types';
 import { formatDateTime } from '@/utils/formatDisplay';
 import { canUserViewRequest } from '@/utils/requestAccess';
@@ -23,12 +21,13 @@ import { canRequesterCancel } from '@/utils/requestOwnership';
 export function RequestDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { canAccessInbox, inboxReady } = usePermissions();
   const location = useLocation();
   const locationState = location.state as { resubmitted?: boolean } | null;
 
-  const [request, setRequest] = useState<SubmittedRequest | undefined>(() =>
-    id ? getRequestById(id) : undefined,
-  );
+  const [request, setRequest] = useState<SubmittedRequest | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -37,11 +36,40 @@ export function RequestDetailsPage() {
   );
 
   useEffect(() => {
-    setRequest(id ? getRequestById(id) : undefined);
+    if (!id) {
+      setRequest(null);
+      setLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    setLoaded(false);
+    void getRequest(id).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setRequest(null);
+        setLoadError(result.error);
+        setLoaded(true);
+        return;
+      }
+      setRequest(result.data);
+      setLoadError(null);
+      setLoaded(true);
+    });
     if (locationState?.resubmitted) {
       setFlash('Request resubmitted successfully.');
     }
+    return () => {
+      cancelled = true;
+    };
   }, [id, locationState?.resubmitted]);
+
+  if (!loaded || !inboxReady) {
+    return (
+      <PageScroll>
+        <p className="text-sm text-brand-600">Loading request…</p>
+      </PageScroll>
+    );
+  }
 
   if (!request) {
     return (
@@ -49,7 +77,7 @@ export function RequestDetailsPage() {
         <div className="mx-auto max-w-lg rounded-lg border border-brand-100 bg-white px-6 py-12 text-center shadow-sm">
           <h1 className="text-xl font-semibold text-brand-900">Request not found</h1>
           <p className="mt-2 text-sm text-brand-600">
-            This request does not exist or is no longer available.
+            {loadError ?? 'This request does not exist or is no longer available.'}
           </p>
           <Link
             to={paths.requests}
@@ -62,7 +90,7 @@ export function RequestDetailsPage() {
     );
   }
 
-  if (user && user.id !== request.requesterId && canAccessActionInbox(user)) {
+  if (user && user.id !== request.requesterId && canAccessInbox) {
     return <Navigate to={paths.inbox} replace />;
   }
 
@@ -70,10 +98,7 @@ export function RequestDetailsPage() {
     return <Navigate to={paths.requests} replace />;
   }
 
-  const fields =
-    request.fieldDefinitions && request.fieldDefinitions.length > 0
-      ? request.fieldDefinitions
-      : (getTemplateById(request.templateId)?.fields ?? []);
+  const fields = request.fieldDefinitions ?? [];
 
   const activity = request.activity ?? [];
   const isOwner = user?.id === request.requesterId;
@@ -82,22 +107,22 @@ export function RequestDetailsPage() {
   const showFooterActions = isOwner && isReturned;
 
   const handleConfirmCancel = (reason: string) => {
-    if (!user) return;
+    if (!user || !request.rowVersion) return;
     setCancelling(true);
     setCancelError(null);
-    const result = cancelRequest({
-      requestId: request.id,
-      actorUserId: user.id,
-      reason,
+    void cancelSubmittedRequest(request.id, {
+      reason: reason.trim() === '' ? null : reason,
+      rowVersion: request.rowVersion,
+    }).then((result) => {
+      setCancelling(false);
+      if (!result.ok) {
+        setCancelError(result.error);
+        return;
+      }
+      setRequest(result.data);
+      setCancelOpen(false);
+      setFlash('Request cancelled.');
     });
-    setCancelling(false);
-    if (!result.ok) {
-      setCancelError(result.error);
-      return;
-    }
-    setRequest(result.request);
-    setCancelOpen(false);
-    setFlash('Request cancelled.');
   };
 
   const openCancel = () => {

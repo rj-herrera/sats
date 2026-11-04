@@ -6,14 +6,12 @@ import {
   FileStack,
   Inbox,
   Layers,
-  Trash2,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { paths } from '@/routes/paths';
 import { devSignOut } from '@/services/accountService';
-import { resetAllMockData } from '@/services/resetMockData';
 import { getPrimaryRoleLabel } from '@/utils/permissions';
 import { getUserInitials } from '@/utils/userDisplay';
 
@@ -134,17 +132,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     });
   }
 
-  const handleResetMockData = () => {
-    const confirmed = window.confirm(
-      'Reset sample requests and templates?\n\nPeople and groups come from the company directory and stay as they are. This cannot be undone.',
-    );
-    if (!confirmed) return;
-
-    resetAllMockData();
-    onClose();
-    window.location.assign(`${import.meta.env.BASE_URL}requests`);
-  };
-
   const initials = getUserInitials(user.name);
 
   useEffect(() => {
@@ -250,21 +237,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
           )}
 
-          <div className="mt-auto border-t border-white/10 pt-4">
-            <div>
-              <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-amber-200/90">
-                Demo data
-              </p>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-amber-100 transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                onClick={handleResetMockData}
-              >
-                <Trash2 size={18} className="shrink-0 opacity-90" aria-hidden="true" />
-                Reset mock data
-              </button>
-            </div>
-          </div>
         </nav>
 
         <div className="relative border-t border-white/10 p-3" ref={accountMenuRef}>

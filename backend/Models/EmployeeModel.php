@@ -28,9 +28,11 @@ final class EmployeeModel
             e.group_id,
             e.emp_status,
             e.date_hired,
-            g.name AS group_name
+            g.name AS group_name,
+            d.name AS designation_name
         FROM employee_list e
         LEFT JOIN group_list g ON g.id = e.group_id
+        LEFT JOIN designation_list d ON d.id = e.designation
         SQL;
 
     private function db(): PDO
@@ -185,6 +187,7 @@ final class EmployeeModel
             'email' => trim((string) $row['email']),
             'groupId' => $primaryGroupId,
             'groupName' => trim((string) ($row['group_name'] ?? '')),
+            'designation' => trim((string) ($row['designation_name'] ?? '')),
             'groupIds' => $groupIds,
             'roles' => ['employee'],
             'hasApprovalResponsibility' => false,

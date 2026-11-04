@@ -162,6 +162,8 @@ export interface SubmittedRequest {
   cancellationReason?: string | null;
   /** Chronological activity; may be derived for legacy records */
   activity?: ActivityEvent[];
+  /** Server row lock. Present on requests loaded from the API. */
+  rowVersion?: number;
 }
 
 export interface CreateRequestInput {

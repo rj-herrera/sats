@@ -26,8 +26,8 @@ function approverSummary(assigneeUserId: string): {
   assigned: boolean;
 } {
   const user = assigneeUserId ? getUserById(assigneeUserId) : undefined;
-  if (!user) return { code: 'ALL', name: 'Select employee...', assigned: false };
-  const code = getGroupById(user.groupId)?.code.trim().toUpperCase() || 'ALL';
+  if (!user) return { code: 'Group', name: 'Select a group first', assigned: false };
+  const code = getGroupById(user.groupId)?.code.trim().toUpperCase() || 'Group';
   return { code, name: user.name, assigned: true };
 }
 
@@ -277,19 +277,26 @@ export function ApprovalWorkflowBuilder({
                           <button
                             type="button"
                             onClick={() => setExpandedId(step.id)}
-                            className="grid h-10 w-full grid-cols-[auto_minmax(0,1fr)] rounded-md border border-brand-200 bg-white text-left"
+                            className="flex h-10 w-full overflow-hidden rounded-md border border-brand-200 bg-white text-left"
                             aria-label={
                               summary.assigned
                                 ? `Edit approver ${step.stepOrder}, ${summary.name}`
                                 : `Assign approver ${step.stepOrder}`
                             }
                           >
-                            <span className="flex items-center border-r border-brand-200 px-2.5 text-sm font-medium text-brand-900">
+                            <span
+                              className={[
+                                'flex shrink-0 items-center border-r border-brand-200 px-2 text-sm',
+                                summary.assigned
+                                  ? 'font-medium text-brand-900'
+                                  : 'text-brand-400',
+                              ].join(' ')}
+                            >
                               {summary.code}
                             </span>
                             <span
                               className={[
-                                'flex min-w-0 items-center truncate px-3 text-sm',
+                                'flex min-w-0 flex-1 items-center truncate px-3 text-sm',
                                 summary.assigned ? 'text-brand-900' : 'text-brand-400',
                               ].join(' ')}
                             >
