@@ -16,6 +16,22 @@ function isAccountStatus(value: unknown): value is AccountStatus {
   );
 }
 
+/** Primary group plus any extra memberships from the company directory. */
+function membershipIds(primary: string, raw: unknown): string[] | undefined {
+  const ids: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value !== 'string' && typeof value !== 'number') return;
+    const id = String(value).trim();
+    if (!id || ids.includes(id)) return;
+    ids.push(id);
+  };
+  push(primary);
+  if (Array.isArray(raw)) {
+    for (const value of raw) push(value);
+  }
+  return ids.length > 0 ? ids : undefined;
+}
+
 export function normalizeUser(
   raw: unknown,
   groupNameFallback?: string,
@@ -54,6 +70,7 @@ export function normalizeUser(
         ? u.email.trim()
         : `${u.id}@example.com`,
     groupId: u.groupId,
+    groupIds: membershipIds(u.groupId, u.groupIds),
     groupName:
       typeof u.groupName === 'string' && u.groupName.trim()
         ? u.groupName

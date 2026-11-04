@@ -1,9 +1,21 @@
+import { useEffect } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { AssignedApproverSelect } from '@/components/template/AssignedApproverSelect';
 import { createStepId } from '@/services/templateNormalizer';
-import { getUserById, listAssignableUsers } from '@/services/userRepository';
 import type { HierarchyApprovalStep, TemplateWorkflow, WorkflowType } from '@/types';
-import { getUserRolesLabel } from '@/utils/permissions';
 import { reindexSteps } from '@/utils/templateValidation';
+
+/** Hierarchy steps are approvers. The label is stored, not chosen in the step card. */
+const HIERARCHY_ROLE_LABEL = 'Approver';
+
+function createApprovalStep(stepOrder: number): HierarchyApprovalStep {
+  return {
+    id: createStepId(),
+    stepOrder,
+    roleLabel: HIERARCHY_ROLE_LABEL,
+    assigneeUserId: '',
+  };
+}
 
 interface ApprovalWorkflowBuilderProps {
   workflow: TemplateWorkflow;
@@ -27,23 +39,26 @@ export function ApprovalWorkflowBuilder({
     }
     onChange({
       type: 'hierarchy_approval',
-      steps: [
-        {
-          id: createStepId(),
-          stepOrder: 1,
-          roleLabel: '',
-          assigneeUserId: '',
-        },
-      ],
+      steps: [createApprovalStep(1)],
     });
   };
-
-  const assignableUsers = listAssignableUsers();
 
   const steps =
     workflow.type === 'hierarchy_approval'
       ? reindexSteps(workflow.steps)
       : [];
+
+  useEffect(() => {
+    if (workflow.type !== 'hierarchy_approval') return;
+    if (workflow.steps.every((step) => step.roleLabel.trim())) return;
+    onChange({
+      type: 'hierarchy_approval',
+      steps: workflow.steps.map((step) => ({
+        ...step,
+        roleLabel: step.roleLabel.trim() || HIERARCHY_ROLE_LABEL,
+      })),
+    });
+  }, [workflow, onChange]);
 
   const updateStep = (index: number, patch: Partial<HierarchyApprovalStep>) => {
     const next = steps.map((step, i) =>
@@ -126,15 +141,7 @@ export function ApprovalWorkflowBuilder({
               onClick={() =>
                 onChange({
                   type: 'hierarchy_approval',
-                  steps: [
-                    ...steps,
-                    {
-                      id: createStepId(),
-                      stepOrder: steps.length + 1,
-                      roleLabel: '',
-                      assigneeUserId: '',
-                    },
-                  ],
+                  steps: [...steps, createApprovalStep(steps.length + 1)],
                 })
               }
               className="inline-flex items-center gap-1.5 rounded-md bg-brand-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
@@ -151,7 +158,6 @@ export function ApprovalWorkflowBuilder({
           ) : (
             <ol className="space-y-3">
               {steps.map((step, index) => {
-                const assignee = getUserById(step.assigneeUserId);
                 return (
                   <li
                     key={step.id}
@@ -194,55 +200,17 @@ export function ApprovalWorkflowBuilder({
                         </button>
                       </div>
                     </div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <label className="block sm:col-span-2">
-                        <span className="mb-1 block text-xs font-medium text-brand-600">
-                          Role / responsibility *
-                        </span>
-                        <input
-                          value={step.roleLabel}
-                          onChange={(e) =>
-                            updateStep(index, { roleLabel: e.target.value })
-                          }
-                          placeholder="e.g. Approver"
-                          className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
-                        />
-                      </label>
-                      <label className="block sm:col-span-2">
-                        <span className="mb-1 block text-xs font-medium text-brand-600">
-                          Assigned approver *
-                        </span>
-                        <select
-                          value={step.assigneeUserId}
-                          onChange={(e) =>
-                            updateStep(index, {
-                              assigneeUserId: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-md border border-brand-200 py-2 pr-10 pl-3 text-sm"
-                        >
-                          <option value="">Select approver…</option>
-                          {assignableUsers.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.name} — {user.groupName} (
-                              {getUserRolesLabel(user)})
-                            </option>
-                          ))}
-                          {assignee &&
-                          !assignableUsers.some((u) => u.id === assignee.id) ? (
-                            <option value={assignee.id}>
-                              {assignee.name} — unavailable (inactive)
-                            </option>
-                          ) : null}
-                        </select>
-                      </label>
+                    <div className="mt-3">
+                      <span className="mb-1 block text-xs font-medium text-brand-600">
+                        Employee *
+                      </span>
+                      <AssignedApproverSelect
+                        assigneeUserId={step.assigneeUserId}
+                        onChange={(assigneeUserId) =>
+                          updateStep(index, { assigneeUserId })
+                        }
+                      />
                     </div>
-                    {assignee ? (
-                      <p className="mt-2 text-xs text-brand-500">
-                        {assignee.name} · {assignee.groupName} ·{' '}
-                        {getUserRolesLabel(assignee)}
-                      </p>
-                    ) : null}
                   </li>
                 );
               })}

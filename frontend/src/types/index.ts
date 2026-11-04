@@ -88,6 +88,11 @@ export interface User {
   name: string;
   email: string;
   groupId: string;
+  /**
+   * Every company group this employee belongs to, including the primary group.
+   * Present when the directory returns memberships beyond the primary group.
+   */
+  groupIds?: string[];
   /** Denormalized display name from the group directory */
   groupName: string;
   /**

@@ -13,6 +13,7 @@ import {
   createTemplate,
   updateTemplate,
 } from '@/services/templateRepository';
+import { createFieldId } from '@/services/templateNormalizer';
 import { getTemplateById } from '@/services/templateService';
 import type {
   FormFieldDefinition,
@@ -49,6 +50,19 @@ interface EditorState {
   status: FormTemplate['status'];
 }
 
+function createInitialFields(): FormFieldDefinition[] {
+  const fields: FormFieldDefinition[] = [];
+  for (let index = 0; index < 3; index += 1) {
+    fields.push({
+      id: createFieldId(fields.map((field) => field.id)),
+      label: '',
+      type: 'text',
+      required: false,
+    });
+  }
+  return fields;
+}
+
 function buildInitialState(user: User, existing?: FormTemplate): EditorState {
   if (existing) {
     return {
@@ -75,7 +89,7 @@ function buildInitialState(user: User, existing?: FormTemplate): EditorState {
     scope: 'group',
     owningGroupId: user.groupId,
     allowedGroupIds: [user.groupId],
-    fields: [],
+    fields: createInitialFields(),
     workflow: { type: 'review_checking' },
     status: 'Active',
   };
