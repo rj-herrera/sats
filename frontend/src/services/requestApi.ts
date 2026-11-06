@@ -1,4 +1,4 @@
-import { apiGet, apiPost, messageFromApi } from '@/services/apiClient';
+import { apiGet, apiPost, apiPostForm, messageFromApi } from '@/services/apiClient';
 import type { InboxCompletedItem, InboxPendingItem } from '@/services/inboxService';
 import type { FieldValue, SubmittedRequest } from '@/types';
 
@@ -145,8 +145,44 @@ async function mutate(
   return { ok: true, data: request };
 }
 
-export function createSubmittedRequest(body: CreateRequestBody): Promise<ApiResult<SubmittedRequest>> {
-  return mutate('/requests', body, 'The request could not be submitted.');
+function hasSelectedFiles(files: Record<string, File[]>): boolean {
+  return Object.values(files).some((selected) => selected.length > 0);
+}
+
+function formDataFor(payload: unknown, files: Record<string, File[]>): FormData {
+  const form = new FormData();
+  form.append('payload', JSON.stringify(payload));
+  for (const [fieldId, selected] of Object.entries(files)) {
+    for (const file of selected) {
+      form.append(`files[${fieldId}][]`, file, file.name);
+    }
+  }
+  return form;
+}
+
+async function mutateForm(
+  path: string,
+  payload: unknown,
+  files: Record<string, File[]>,
+  fallback: string,
+): Promise<ApiResult<SubmittedRequest>> {
+  const response = await apiPostForm(path, formDataFor(payload, files));
+  if (response.status !== 200 && response.status !== 201) {
+    return { ok: false, error: messageFromApi(response.status, response.body, fallback) };
+  }
+  const request = parseRequest(response.body);
+  if (!request) return { ok: false, error: fallback };
+  return { ok: true, data: request };
+}
+
+export function createSubmittedRequest(
+  body: CreateRequestBody,
+  files: Record<string, File[]> = {},
+): Promise<ApiResult<SubmittedRequest>> {
+  if (!hasSelectedFiles(files)) {
+    return mutate('/requests', body, 'The request could not be submitted.');
+  }
+  return mutateForm('/requests', body, files, 'The request could not be submitted.');
 }
 
 export function submitDecision(
@@ -158,9 +194,22 @@ export function submitDecision(
 
 export function resubmitSubmittedRequest(
   id: string,
-  body: { fieldValues: Record<string, FieldValue>; rowVersion: number },
+  body: {
+    fieldValues: Record<string, FieldValue>;
+    rowVersion: number;
+    keptAttachmentIds?: string[];
+  },
+  files: Record<string, File[]> = {},
 ): Promise<ApiResult<SubmittedRequest>> {
-  return mutate(`/requests/${id}/resubmit`, body, 'The request could not be resubmitted.');
+  if (!hasSelectedFiles(files)) {
+    return mutate(`/requests/${id}/resubmit`, body, 'The request could not be resubmitted.');
+  }
+  return mutateForm(
+    `/requests/${id}/resubmit`,
+    body,
+    files,
+    'The request could not be resubmitted.',
+  );
 }
 
 export function cancelSubmittedRequest(

@@ -128,9 +128,7 @@ SELECT
       'id', 'attachment',
       'label', 'Attachment',
       'type', 'file',
-      'required', FALSE,
-      'accept', '.pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx,.xls',
-      'maxFileSizeMb', 5
+      'required', FALSE
     )
   ),
   JSON_OBJECT('type', 'review_checking'),

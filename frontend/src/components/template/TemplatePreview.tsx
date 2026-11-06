@@ -22,7 +22,7 @@ export function TemplatePreview({
   const [values, setValues] = useState<Record<string, FieldValue>>(() =>
     emptyValuesForTemplate(template),
   );
-  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [files, setFiles] = useState<Record<string, File[]>>({});
 
   const hierarchy = useMemo(() => {
     if (template.workflow.type !== 'hierarchy_approval') return null;
@@ -111,8 +111,8 @@ export function TemplatePreview({
             onChange={(fieldId, value) =>
               setValues((prev) => ({ ...prev, [fieldId]: value }))
             }
-            onFileChange={(fieldId, file) =>
-              setFiles((prev) => ({ ...prev, [fieldId]: file }))
+            onFilesChange={(fieldId, next) =>
+              setFiles((prev) => ({ ...prev, [fieldId]: next }))
             }
           />
         </div>

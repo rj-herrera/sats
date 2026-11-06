@@ -6,6 +6,7 @@ import type {
 } from '@/types';
 import { resolveHierarchyForTemplate } from '@/services/workflowService';
 import { isNumericFieldType } from '@/utils/currencyFields';
+import { validateSelectedFiles } from '@/utils/fileAttachments';
 
 export type FieldErrors = Record<string, string>;
 
@@ -36,39 +37,14 @@ function isValidUrl(value: string): boolean {
 export function validateField(
   field: FormFieldDefinition,
   value: FieldValue,
-  file: File | null,
+  files: File[] = [],
+  reserved = 0,
 ): string | null {
   if (field.type === 'file') {
-    if (field.required && !file) {
+    if (field.required && files.length === 0 && reserved === 0) {
       return `${field.label} is required.`;
     }
-    if (file) {
-      if (field.maxFileSizeMb != null) {
-        const maxBytes = field.maxFileSizeMb * 1024 * 1024;
-        if (file.size > maxBytes) {
-          return `${field.label} must be ${field.maxFileSizeMb} MB or smaller.`;
-        }
-      }
-      if (field.accept) {
-        const tokens = field.accept.split(',').map((t) => t.trim().toLowerCase());
-        const name = file.name.toLowerCase();
-        const type = file.type.toLowerCase();
-        const ok = tokens.some((token) => {
-          if (token.startsWith('.')) {
-            return name.endsWith(token);
-          }
-          if (token.endsWith('/*')) {
-            const prefix = token.slice(0, -1);
-            return type.startsWith(prefix);
-          }
-          return type === token;
-        });
-        if (!ok) {
-          return `${field.label} file type is not allowed.`;
-        }
-      }
-    }
-    return null;
+    return validateSelectedFiles(files, reserved);
   }
 
   if (field.type === 'checkbox') {
@@ -154,7 +130,7 @@ export async function buildAttachmentMetadata(
 export function validateRequestForm(params: {
   template: FormTemplate;
   values: Record<string, FieldValue>;
-  files: Record<string, File | null>;
+  files: Record<string, File[]>;
   selectedReviewerIds: string[];
 }): ValidationResult {
   const { template, values, files, selectedReviewerIds } = params;
@@ -164,7 +140,7 @@ export function validateRequestForm(params: {
     const error = validateField(
       field,
       values[field.id] ?? null,
-      files[field.id] ?? null,
+      files[field.id] ?? [],
     );
     if (error) {
       fieldErrors[field.id] = error;
@@ -199,7 +175,7 @@ export function validateRequestForm(params: {
 export function validateRevisionForm(params: {
   fields: FormFieldDefinition[];
   values: Record<string, FieldValue>;
-  files: Record<string, File | null>;
+  files: Record<string, File[]>;
   existingAttachments: AttachmentMetadata[];
   removedAttachmentFieldIds: Set<string>;
 }): ValidationResult {
@@ -209,21 +185,19 @@ export function validateRevisionForm(params: {
 
   for (const field of fields) {
     if (field.type === 'file') {
-      const newFile = files[field.id] ?? null;
-      const existing = existingAttachments.find((a) => a.fieldId === field.id);
-      const keptExisting =
-        existing && !removedAttachmentFieldIds.has(field.id) ? existing : null;
-
-      if (newFile) {
-        const error = validateField(field, null, newFile);
-        if (error) fieldErrors[field.id] = error;
-      } else if (field.required && !keptExisting) {
-        fieldErrors[field.id] = `${field.label} is required.`;
-      }
+      const newFiles = files[field.id] ?? [];
+      const keptCount = existingAttachments.filter((attachment) => {
+        if (attachment.fieldId !== field.id) return false;
+        if (removedAttachmentFieldIds.has(field.id)) return false;
+        if (attachment.id && removedAttachmentFieldIds.has(attachment.id)) return false;
+        return true;
+      }).length;
+      const error = validateField(field, null, newFiles, keptCount);
+      if (error) fieldErrors[field.id] = error;
       continue;
     }
 
-    const error = validateField(field, values[field.id] ?? null, null);
+    const error = validateField(field, values[field.id] ?? null);
     if (error) {
       fieldErrors[field.id] = error;
     }

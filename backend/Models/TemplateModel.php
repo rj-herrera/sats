@@ -62,7 +62,10 @@ final class TemplateModel
     {
         if ($isAdmin) {
             $statement = $this->db()->query(
-                'SELECT id FROM templates ORDER BY updated_at DESC, id DESC'
+                'SELECT id FROM templates
+                 ORDER BY CASE WHEN status = \'Active\' THEN 0 ELSE 1 END,
+                          updated_at DESC,
+                          id DESC'
             );
 
             return $this->hydrateIds($this->idsFrom($statement));
@@ -76,7 +79,9 @@ final class TemplateModel
             'SELECT id
              FROM templates
              WHERE scope = \'group\' AND owning_group_id = :groupId
-             ORDER BY updated_at DESC, id DESC'
+             ORDER BY CASE WHEN status = \'Active\' THEN 0 ELSE 1 END,
+                      updated_at DESC,
+                      id DESC'
         );
         $statement->execute(['groupId' => $groupId]);
 

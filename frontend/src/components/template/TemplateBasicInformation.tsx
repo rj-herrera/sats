@@ -1,4 +1,5 @@
 import { GroupMultiSelect } from '@/components/template/GroupMultiSelect';
+import { OwningGroupSelect } from '@/components/template/OwningGroupSelect';
 import { listActiveGroups, listGroups } from '@/services/groupRepository';
 import type { FormTemplate, TemplateScope, User } from '@/types';
 import { canCreateGenericTemplate } from '@/utils/templatePermissions';
@@ -156,36 +157,18 @@ export function TemplateBasicInformation({
               {user.groupName}
             </div>
           ) : (
-            <select
+            <OwningGroupSelect
+              groups={groups}
               value={owningGroupId ?? ''}
-              aria-invalid={owningMissing || undefined}
-              onChange={(e) => {
-                const groupId = e.target.value;
+              invalid={owningMissing}
+              onChange={(groupId) => {
                 onChange({
                   owningGroupId: groupId,
                   rememberedOwningGroupId: groupId,
                   allowedGroupIds: groupId ? [groupId] : [],
                 });
               }}
-              className={[
-                fieldClass,
-                owningMissing ? 'border-red-400 focus:ring-red-500/20' : '',
-              ].join(' ')}
-            >
-              <option value="" disabled>
-                Select owning group
-              </option>
-              {groups.map((group) => (
-                <option
-                  key={group.id}
-                  value={group.id}
-                  disabled={group.status !== 'Active'}
-                >
-                  {group.name}
-                  {group.status !== 'Active' ? ' (Inactive)' : ''}
-                </option>
-              ))}
-            </select>
+            />
           )}
           {owningMissing ? (
             <p className="mt-1 text-xs text-red-700" role="alert">

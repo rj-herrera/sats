@@ -39,11 +39,11 @@ interface SubmittedFieldValuesProps {
   details?: SheetDetails;
 }
 
-function attachmentForField(
+function attachmentsForField(
   attachments: AttachmentMetadata[],
   fieldId: string,
-): AttachmentMetadata | undefined {
-  return attachments.find((a) => a.fieldId === fieldId);
+): AttachmentMetadata[] {
+  return attachments.filter((attachment) => attachment.fieldId === fieldId);
 }
 
 function isDescriptionField(field: FormFieldDefinition): boolean {
@@ -185,14 +185,19 @@ export function SubmittedFieldValues({
     }
 
     for (const field of fields) {
-      const attachment = attachmentForField(request.attachments, field.id);
+      const fieldAttachments = attachmentsForField(request.attachments, field.id);
       const display = formatSubmittedFieldValue(
         field,
         request.fieldValues[field.id],
-        attachment,
+        fieldAttachments[0],
       );
       if (field.type === 'file') {
-        if (attachment) files.push({ id: field.id, attachment });
+        for (const attachment of fieldAttachments) {
+          files.push({
+            id: attachment.id ?? `${field.id}-${attachment.fileName}-${attachment.fileSize}`,
+            attachment,
+          });
+        }
         continue;
       }
       if (isDescriptionField(field)) {
@@ -358,26 +363,35 @@ export function SubmittedFieldValues({
         <h2 className="text-base font-semibold text-brand-900">{title}</h2>
         <dl className="mt-5 divide-y divide-brand-100">
           {fields.map((field) => {
-            const attachment = attachmentForField(request.attachments, field.id);
+            const fieldAttachments = attachmentsForField(request.attachments, field.id);
             const display = formatSubmittedFieldValue(
               field,
               request.fieldValues[field.id],
-              attachment,
+              field.type === 'file' ? null : fieldAttachments[0],
             );
             return (
               <div key={field.id} className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
                 <dt className="text-sm font-medium text-brand-700">{field.label}</dt>
                 <dd className="text-sm text-brand-900 sm:col-span-2">
-                  {display.kind === 'empty' ? (
+                  {field.type === 'file' ? (
+                    fieldAttachments.length === 0 ? (
+                      <span className="italic text-brand-400">Not provided</span>
+                    ) : (
+                      <span className="flex flex-col items-start gap-1">
+                        {fieldAttachments.map((attachment) => (
+                          <button
+                            key={attachment.id ?? `${attachment.fileName}-${attachment.fileSize}`}
+                            type="button"
+                            onClick={() => setViewerAttachment(attachment)}
+                            className="break-all text-left text-brand-800 underline hover:text-brand-950"
+                          >
+                            {attachment.fileName} ({formatFileSize(attachment.fileSize)})
+                          </button>
+                        ))}
+                      </span>
+                    )
+                  ) : display.kind === 'empty' ? (
                     <span className="italic text-brand-400">{display.text}</span>
-                  ) : display.kind === 'attachment' && attachment ? (
-                    <button
-                      type="button"
-                      onClick={() => setViewerAttachment(attachment)}
-                      className="break-all text-left text-brand-800 underline hover:text-brand-950"
-                    >
-                      {display.text}
-                    </button>
                   ) : display.kind === 'url' && display.href ? (
                     <a
                       href={display.href}

@@ -25,7 +25,7 @@ export function EditRequestPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [values, setValues] = useState<Record<string, FieldValue>>({});
-  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [files, setFiles] = useState<Record<string, File[]>>({});
   const [removedAttachmentFieldIds, setRemovedAttachmentFieldIds] = useState(
     () => new Set<string>(),
   );
@@ -150,10 +150,6 @@ export function EditRequestPage() {
     setFormError(validation.formError);
     if (!validation.valid) return;
 
-    if (Object.values(files).some((file) => file !== null)) {
-      setFormError('File uploads are not available yet.');
-      return;
-    }
     if (!request.rowVersion) {
       setFormError('This request is missing a version. Reload and try again.');
       return;
@@ -162,10 +158,21 @@ export function EditRequestPage() {
     setSubmitting(true);
     setFormError(null);
 
-    const result = await resubmitSubmittedRequest(request.id, {
-      fieldValues: values,
-      rowVersion: request.rowVersion,
+    const keptAttachmentIds = request.attachments.flatMap((attachment) => {
+      if (!attachment.id) return [];
+      if (removedAttachmentFieldIds.has(attachment.id)) return [];
+      if (removedAttachmentFieldIds.has(attachment.fieldId)) return [];
+      return [attachment.id];
     });
+    const result = await resubmitSubmittedRequest(
+      request.id,
+      {
+        fieldValues: values,
+        rowVersion: request.rowVersion,
+        keptAttachmentIds,
+      },
+      files,
+    );
     setSubmitting(false);
 
     if (!result.ok) {
@@ -266,16 +273,15 @@ export function EditRequestPage() {
               onChange={(fieldId, value) =>
                 setValues((prev) => ({ ...prev, [fieldId]: value }))
               }
-              onFileChange={(fieldId, file) =>
-                setFiles((prev) => ({ ...prev, [fieldId]: file }))
+              onFilesChange={(fieldId, next) =>
+                setFiles((prev) => ({ ...prev, [fieldId]: next }))
               }
-              onRemoveExistingAttachment={(fieldId) => {
+              onRemoveExistingAttachment={(attachmentId) => {
                 setRemovedAttachmentFieldIds((prev) => {
                   const next = new Set(prev);
-                  next.add(fieldId);
+                  next.add(attachmentId);
                   return next;
                 });
-                setFiles((prev) => ({ ...prev, [fieldId]: null }));
               }}
             />
           </div>

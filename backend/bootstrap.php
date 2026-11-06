@@ -127,6 +127,7 @@ require_once __DIR__ . '/Models/TemplateModel.php';
 require_once __DIR__ . '/Models/RequestModel.php';
 require_once __DIR__ . '/TemplateValidator.php';
 require_once __DIR__ . '/RequestFields.php';
+require_once __DIR__ . '/AttachmentStore.php';
 require_once __DIR__ . '/Controllers/DirectoryController.php';
 require_once __DIR__ . '/Controllers/TemplateController.php';
 require_once __DIR__ . '/Controllers/RequestController.php';

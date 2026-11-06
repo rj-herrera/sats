@@ -7,10 +7,10 @@ interface DynamicRequestFormProps {
   fields?: FormFieldDefinition[];
   title?: string;
   values: Record<string, FieldValue>;
-  files: Record<string, File | null>;
+  files: Record<string, File[]>;
   errors: Record<string, string>;
   onChange: (fieldId: string, value: FieldValue) => void;
-  onFileChange: (fieldId: string, file: File | null) => void;
+  onFilesChange: (fieldId: string, files: File[]) => void;
   existingAttachments?: AttachmentMetadata[];
   removedAttachmentFieldIds?: Set<string>;
   onRemoveExistingAttachment?: (fieldId: string) => void;
@@ -24,7 +24,7 @@ export function DynamicRequestForm({
   files,
   errors,
   onChange,
-  onFileChange,
+  onFilesChange,
   existingAttachments = [],
   removedAttachmentFieldIds,
   onRemoveExistingAttachment,
@@ -36,25 +36,27 @@ export function DynamicRequestForm({
       <h2 className="text-base font-semibold text-brand-900">{title}</h2>
       <div className="mt-5 grid gap-4">
         {fieldList.map((field) => {
-          const existing = existingAttachments.find((a) => a.fieldId === field.id);
-          const showExisting =
-            existing &&
-            !files[field.id] &&
-            !(removedAttachmentFieldIds?.has(field.id) ?? false);
+          const selected = files[field.id] ?? [];
+          const kept = existingAttachments.filter((attachment) => {
+            if (attachment.fieldId !== field.id) return false;
+            if (removedAttachmentFieldIds?.has(field.id)) return false;
+            if (attachment.id && removedAttachmentFieldIds?.has(attachment.id)) return false;
+            return true;
+          });
 
           return (
             <DynamicFormField
               key={field.id}
               field={field}
               value={values[field.id] ?? null}
-              file={files[field.id] ?? null}
+              files={selected}
               error={errors[field.id]}
               onChange={(value) => onChange(field.id, value)}
-              onFileChange={(file) => onFileChange(field.id, file)}
-              existingAttachment={showExisting ? existing : null}
+              onFilesChange={(next) => onFilesChange(field.id, next)}
+              existingAttachments={kept}
               onRemoveExistingAttachment={
                 onRemoveExistingAttachment
-                  ? () => onRemoveExistingAttachment(field.id)
+                  ? (attachmentId) => onRemoveExistingAttachment(attachmentId)
                   : undefined
               }
             />

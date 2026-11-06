@@ -121,5 +121,5 @@ export interface FormTemplate {
   version: number;
 }
 
-/** Runtime field value stored in the form (files held separately as File | null). */
+/** Runtime field value stored in the form (files are held separately). */
 export type FieldValue = string | number | boolean | null;

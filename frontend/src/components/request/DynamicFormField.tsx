@@ -1,19 +1,25 @@
+import { useState } from 'react';
 import type { AttachmentMetadata, FieldValue, FormFieldDefinition } from '@/types';
 import {
   getCurrencyFieldMeta,
   isNumericFieldType,
 } from '@/utils/currencyFields';
+import {
+  FILE_ACCEPT,
+  FILE_FIELD_RULES,
+  addPickedFiles,
+} from '@/utils/fileAttachments';
 
 interface DynamicFormFieldProps {
   field: FormFieldDefinition;
   value: FieldValue;
-  file: File | null;
+  files?: File[];
   error?: string;
   onChange: (value: FieldValue) => void;
-  onFileChange: (file: File | null) => void;
+  onFilesChange?: (files: File[]) => void;
   /** Previously saved metadata (revision edit). Contents are not stored. */
-  existingAttachment?: AttachmentMetadata | null;
-  onRemoveExistingAttachment?: () => void;
+  existingAttachments?: AttachmentMetadata[];
+  onRemoveExistingAttachment?: (attachmentId: string) => void;
 }
 
 function formatBytes(size: number): string {
@@ -25,13 +31,14 @@ function formatBytes(size: number): string {
 export function DynamicFormField({
   field,
   value,
-  file,
+  files = [],
   error,
   onChange,
-  onFileChange,
-  existingAttachment,
+  onFilesChange,
+  existingAttachments = [],
   onRemoveExistingAttachment,
 }: DynamicFormFieldProps) {
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const inputId = `field-${field.id}`;
   const errorId = `${inputId}-error`;
   const helpId = `${inputId}-help`;
@@ -170,61 +177,87 @@ export function DynamicFormField({
   }
 
   if (field.type === 'file') {
+    const reserved = existingAttachments.length;
+    const shownError = selectionError || error;
     return (
       <div>
         {label}
-        <p className="mt-1 text-xs text-brand-500">
-          Only file name and size are stored in this mock build. Previous files
-          cannot be downloaded.
+        <p id={helpId} className="mt-1 text-xs text-brand-500">
+          {FILE_FIELD_RULES}
         </p>
         <input
           id={inputId}
           type="file"
-          accept={field.accept}
+          multiple
+          accept={FILE_ACCEPT}
           className="mt-1.5 block w-full text-sm text-brand-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-200"
-          aria-invalid={Boolean(error)}
-          aria-describedby={describedBy}
-          onChange={(e) => {
-            const next = e.target.files?.[0] ?? null;
-            onFileChange(next);
-            onChange(next ? next.name : null);
+          aria-invalid={Boolean(shownError)}
+          aria-describedby={helpId}
+          onChange={(event) => {
+            const picked = Array.from(event.target.files ?? []);
+            event.target.value = '';
+            if (picked.length === 0) return;
+            const result = addPickedFiles(files, picked, reserved);
+            onFilesChange?.(result.files);
+            onChange(result.files.length > 0 ? result.files.map((item) => item.name).join(', ') : null);
+            setSelectionError(result.error);
           }}
         />
-        {file ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700">
-            <span className="font-medium">{file.name}</span>
-            <span>({formatBytes(file.size)})</span>
-            <button
-              type="button"
-              className="ml-auto text-brand-800 underline hover:no-underline"
-              onClick={() => {
-                onFileChange(null);
-                onChange(null);
-              }}
-            >
-              Remove
-            </button>
-          </div>
-        ) : existingAttachment ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700">
-            <span className="font-medium">{existingAttachment.fileName}</span>
-            <span>({formatBytes(existingAttachment.fileSize)})</span>
-            <span className="text-brand-500">Previously attached (metadata only)</span>
-            {onRemoveExistingAttachment ? (
-              <button
-                type="button"
-                className="ml-auto text-brand-800 underline hover:no-underline"
-                onClick={() => {
-                  onRemoveExistingAttachment();
-                  onChange(null);
-                }}
+        {files.length > 0 ? (
+          <ul className="mt-2 space-y-2">
+            {files.map((item, index) => (
+              <li
+                key={`${item.name}-${item.size}-${item.lastModified}`}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700"
               >
-                Remove
-              </button>
-            ) : null}
-          </div>
+                <span className="font-medium">{item.name}</span>
+                <span>({formatBytes(item.size)})</span>
+                <button
+                  type="button"
+                  className="ml-auto text-brand-800 underline hover:no-underline"
+                  onClick={() => {
+                    const next = files.filter((_, itemIndex) => itemIndex !== index);
+                    onFilesChange?.(next);
+                    onChange(next.length > 0 ? next.map((entry) => entry.name).join(', ') : null);
+                    setSelectionError(null);
+                  }}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : null}
-        {errorMsg}
+        {existingAttachments.length > 0 ? (
+          <ul className="mt-2 space-y-2">
+            {existingAttachments.map((attachment) => (
+              <li
+                key={attachment.id ?? `${attachment.fileName}-${attachment.fileSize}`}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700"
+              >
+                <span className="font-medium">{attachment.fileName}</span>
+                <span>({formatBytes(attachment.fileSize)})</span>
+                <span className="text-brand-500">Already attached</span>
+                {onRemoveExistingAttachment ? (
+                  <button
+                    type="button"
+                    className="ml-auto text-brand-800 underline hover:no-underline"
+                    onClick={() =>
+                      onRemoveExistingAttachment(attachment.id ?? attachment.fieldId)
+                    }
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {shownError ? (
+          <p id={errorId} className="mt-1 text-xs text-red-600" role="alert">
+            {shownError}
+          </p>
+        ) : null}
       </div>
     );
   }

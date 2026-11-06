@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, FileText, X } from 'lucide-react';
+import { apiUrl } from '@/services/apiClient';
 import type { AttachmentMetadata } from '@/types';
 import { formatFileSize } from '@/utils/formatDisplay';
 
@@ -20,11 +21,20 @@ function resolveFileUrl(url: string): string {
   ) {
     return url;
   }
+  if (url.startsWith('/requests/')) {
+    return apiUrl(url);
+  }
   try {
     return new URL(url, window.location.origin).href;
   } catch {
     return url;
   }
+}
+
+async function fetchFile(url: string): Promise<Blob> {
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error('Could not load file contents.');
+  return response.blob();
 }
 
 function previewKind(fileType: string, fileName: string): PreviewKind {
@@ -67,40 +77,57 @@ function FilePreview({
 }) {
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (kind !== 'text') {
-      setTextContent(null);
-      setTextError(null);
-      return;
-    }
-
     let cancelled = false;
+    let objectUrl: string | null = null;
     setTextContent(null);
     setTextError(null);
+    setBlobUrl(null);
 
-    fetch(url)
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Could not load file contents.');
-        return response.text();
-      })
-      .then((text) => {
-        if (!cancelled) setTextContent(text);
+    fetchFile(url)
+      .then(async (blob) => {
+        if (cancelled) return;
+        if (kind === 'text') {
+          setTextContent(await blob.text());
+          return;
+        }
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
       })
       .catch(() => {
-        if (!cancelled) setTextError('Could not load this file for text preview.');
+        if (!cancelled) setTextError('Could not load this file for preview.');
       });
 
     return () => {
       cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [kind, url]);
+
+  if (textError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-brand-200 bg-white px-6 text-center">
+        <FileText size={32} className="text-brand-400" aria-hidden />
+        <p className="text-sm text-brand-700">{textError}</p>
+      </div>
+    );
+  }
+
+  if ((kind === 'text' && textContent == null) || (kind !== 'text' && blobUrl == null)) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-md border border-brand-100 bg-white text-sm text-brand-500">
+        Loading preview…
+      </div>
+    );
+  }
 
   if (kind === 'image') {
     return (
       <div className="flex h-full items-center justify-center overflow-auto rounded-md border border-brand-100 bg-white p-4">
         <img
-          src={url}
+          src={blobUrl ?? undefined}
           alt={fileName}
           className="max-h-full max-w-full object-contain"
         />
@@ -109,27 +136,6 @@ function FilePreview({
   }
 
   if (kind === 'text') {
-    if (textError) {
-      return (
-        <div className="flex h-full flex-col items-center justify-center gap-2 rounded-md border border-dashed border-brand-200 bg-white px-6 text-center">
-          <FileText size={32} className="text-brand-400" aria-hidden />
-          <p className="text-sm text-brand-700">{textError}</p>
-          <iframe
-            title={fileName}
-            src={url}
-            className="mt-2 h-64 w-full rounded-md border border-brand-100 bg-white"
-          />
-        </div>
-      );
-    }
-
-    if (textContent == null) {
-      return (
-        <div className="flex h-full items-center justify-center rounded-md border border-brand-100 bg-white text-sm text-brand-500">
-          Loading preview…
-        </div>
-      );
-    }
 
     return (
       <pre className="h-full overflow-auto rounded-md border border-brand-100 bg-white p-4 text-xs leading-relaxed whitespace-pre-wrap break-words text-brand-900">
@@ -143,7 +149,7 @@ function FilePreview({
     <div className="flex h-full min-h-0 flex-col gap-2">
       <iframe
         title={fileName}
-        src={url}
+        src={blobUrl ?? undefined}
         className="min-h-0 w-full flex-1 rounded-md border border-brand-100 bg-white"
       />
       {kind === 'embed' ? (
@@ -209,14 +215,23 @@ export function FileViewerDialog({
 
           <div className="flex shrink-0 items-center gap-2">
             {url ? (
-              <a
-                href={url}
-                download={attachment.fileName}
+              <button
+                type="button"
+                onClick={() => {
+                  void fetchFile(url).then((blob) => {
+                    const objectUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = objectUrl;
+                    link.download = attachment.fileName;
+                    link.click();
+                    URL.revokeObjectURL(objectUrl);
+                  });
+                }}
                 className="inline-flex items-center gap-1.5 rounded-md bg-brand-900 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800"
               >
                 <Download size={16} aria-hidden />
                 Download
-              </a>
+              </button>
             ) : null}
             <button
               type="button"

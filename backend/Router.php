@@ -42,6 +42,7 @@ final class Router
                     '/requests?view=inbox',
                     '/requests?view=completed',
                     '/requests/{id}',
+                    '/requests/{id}/attachments/{attachmentId}',
                 ],
             ]);
             return;
@@ -104,6 +105,15 @@ final class Router
         if (preg_match('#^/requests/(\d+)/resubmit$#', $path, $matches) === 1) {
             if ($method === 'POST') {
                 $this->requests->resubmit((int) $matches[1]);
+                return;
+            }
+            json_response(['error' => 'Method not allowed.'], 405);
+            return;
+        }
+
+        if (preg_match('#^/requests/(\d+)/attachments/([a-f0-9]{32})$#', $path, $matches) === 1) {
+            if ($method === 'GET') {
+                $this->requests->download((int) $matches[1], $matches[2]);
                 return;
             }
             json_response(['error' => 'Method not allowed.'], 405);

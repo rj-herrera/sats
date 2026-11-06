@@ -24,7 +24,7 @@ export function RequestFormPage() {
 
   const [templateId, setTemplateId] = useState('');
   const [values, setValues] = useState<Record<string, FieldValue>>({});
-  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [files, setFiles] = useState<Record<string, File[]>>({});
   const [selectedReviewerIds, setSelectedReviewerIds] = useState<string[]>([]);
   const [reviewerUnfinished, setReviewerUnfinished] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -135,18 +135,16 @@ export function RequestFormPage() {
       return;
     }
 
-    if (Object.values(files).some((file) => file !== null)) {
-      setFormError('File uploads are not available yet.');
-      return;
-    }
-
     setSubmitting(true);
-    const saved = await createSubmittedRequest({
-      templateId: selectedTemplate.id,
-      fieldValues: values,
-      reviewerIds:
-        selectedTemplate.workflow.type === 'review_checking' ? selectedReviewerIds : undefined,
-    });
+    const saved = await createSubmittedRequest(
+      {
+        templateId: selectedTemplate.id,
+        fieldValues: values,
+        reviewerIds:
+          selectedTemplate.workflow.type === 'review_checking' ? selectedReviewerIds : undefined,
+      },
+      files,
+    );
     setSubmitting(false);
 
     if (!saved.ok) {
@@ -214,8 +212,8 @@ export function RequestFormPage() {
                       return next;
                     });
                   }}
-                  onFileChange={(fieldId, file) => {
-                    setFiles((prev) => ({ ...prev, [fieldId]: file }));
+                  onFilesChange={(fieldId, next) => {
+                    setFiles((prev) => ({ ...prev, [fieldId]: next }));
                     setFieldErrors((prev) => {
                       const next = { ...prev };
                       delete next[fieldId];

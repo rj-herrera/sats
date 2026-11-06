@@ -49,7 +49,7 @@ final class RequestFields
 
     /**
      * True when every stored answer matches the returned revision.
-     * File fields are skipped until uploads are stored.
+     * File fields are compared through the attachment list, not the answer.
      *
      * @param list<array<string, mixed>> $fields
      * @param array<string, mixed> $previous
@@ -81,10 +81,6 @@ final class RequestFields
         $required = (bool) ($field['required'] ?? false);
 
         if ($type === 'file') {
-            if ($required || !self::isBlank($value)) {
-                throw new HttpException('File uploads are not available yet.', 400);
-            }
-
             return null;
         }
 

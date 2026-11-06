@@ -9,4 +9,5 @@ Options -Indexes
   RewriteEngine On
   RewriteRule ^backend(/|$) - [F,L]
   RewriteRule ^database(/|$) - [F,L]
+  RewriteRule ^storage(/|$) - [F,L]
 </IfModule>

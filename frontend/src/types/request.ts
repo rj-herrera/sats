@@ -55,11 +55,12 @@ export const ACTIVITY_EVENT_TYPES = [
 export type ActivityEventType = (typeof ACTIVITY_EVENT_TYPES)[number];
 
 export interface AttachmentMetadata {
+  id?: string;
   fieldId: string;
   fileName: string;
   fileSize: number;
   fileType: string;
-  /** Optional public/mock URL for open/download in the UI. */
+  /** API path or mock URL used to open and download the file. */
   downloadUrl?: string | null;
 }
 

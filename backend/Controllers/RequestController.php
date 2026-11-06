@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\AttachmentStore;
 use App\CurrentActor;
 use App\HttpException;
 use App\Models\EmployeeModel;
@@ -45,8 +46,7 @@ final class RequestController
     public function create(): void
     {
         $user = $this->actor->requireActive();
-        $input = read_json_body();
-        $this->rejectAttachments($input);
+        [$input, $uploads] = $this->submission();
         if (preg_match('/^\d+$/', (string) ($user['groupId'] ?? '')) !== 1) {
             throw new HttpException('Your group is not available.', 400);
         }
@@ -79,7 +79,7 @@ final class RequestController
             ? $this->hierarchyAssignments($template['workflow']['steps'] ?? [])
             : $this->reviewAssignments($input['reviewerIds'] ?? null);
 
-        json_response($this->requests->create($user, $template, $values, $assignments, $group), 201);
+        json_response($this->requests->create($user, $template, $values, $assignments, $group, $uploads), 201);
     }
 
     public function decide(int $id): void
@@ -107,8 +107,7 @@ final class RequestController
     public function resubmit(int $id): void
     {
         $user = $this->actor->requireActive();
-        $input = read_json_body();
-        $this->rejectAttachments($input);
+        [$input, $uploads] = $this->submission();
         $fieldValues = $input['fieldValues'] ?? [];
         if (!is_array($fieldValues)) {
             throw new HttpException('fieldValues must be an object.', 400);
@@ -119,7 +118,27 @@ final class RequestController
             $user,
             $fieldValues,
             $this->rowVersionFrom($input),
+            $uploads,
+            $this->keptAttachmentIds($input),
         ));
+    }
+
+    public function download(int $id, string $attachmentId): void
+    {
+        $user = $this->actor->requireActive();
+        $file = $this->requests->attachmentFile($id, $attachmentId, (string) $user['id']);
+        $download = ($_GET['download'] ?? '') === '1';
+        $type = $file['fileType'] !== '' ? $file['fileType'] : 'application/octet-stream';
+        $ascii = preg_replace('/[^A-Za-z0-9._ -]/', '_', $file['fileName']) ?: 'file';
+        $encoded = rawurlencode($file['fileName']);
+        $disposition = $download ? 'attachment' : 'inline';
+
+        header('Content-Type: ' . $type);
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Length: ' . (string) filesize($file['path']));
+        header("Content-Disposition: {$disposition}; filename=\"{$ascii}\"; filename*=UTF-8''{$encoded}");
+        readfile($file['path']);
+        exit;
     }
 
     public function cancel(int $id): void
@@ -139,16 +158,62 @@ final class RequestController
         ));
     }
 
-    /** @param array<string, mixed> $input */
-    private function rejectAttachments(array $input): void
+    /**
+     * JSON, or a multipart body whose payload field is the same JSON.
+     * Files arrive as files[{fieldId}][].
+     *
+     * @return array{0: array<string, mixed>, 1: list<array{fieldId: string, tmp: string, name: string, size: int, extension: string, type: string}>}
+     */
+    private function submission(): array
     {
-        if (!array_key_exists('attachments', $input)) {
-            return;
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        if (!is_string($contentType) || !str_contains($contentType, 'multipart/form-data')) {
+            return [read_json_body(), []];
         }
-        $attachments = $input['attachments'];
-        if (!is_array($attachments) || $attachments !== []) {
-            throw new HttpException('File uploads are not available yet.', 400);
+
+        $length = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($length > 0 && ($_POST === [] && $_FILES === [])) {
+            throw new HttpException('The upload is too large. Each file must be 20 MB or smaller.', 400);
         }
+
+        $raw = $_POST['payload'] ?? null;
+        if (!is_string($raw) || trim($raw) === '') {
+            throw new HttpException('Request body must be JSON.', 400);
+        }
+        try {
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new HttpException('Request body must be JSON.', 400);
+        }
+        if (!is_array($decoded)) {
+            throw new HttpException('Request body must be a JSON object.', 400);
+        }
+
+        return [$decoded, AttachmentStore::incoming()];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return list<string>|null
+     */
+    private function keptAttachmentIds(array $input): ?array
+    {
+        if (!array_key_exists('keptAttachmentIds', $input)) {
+            return null;
+        }
+        $ids = $input['keptAttachmentIds'];
+        if (!is_array($ids) || !array_is_list($ids)) {
+            throw new HttpException('keptAttachmentIds must be a list.', 400);
+        }
+        $kept = [];
+        foreach ($ids as $id) {
+            if (!is_string($id) || preg_match('/^[a-f0-9]{32}$/', $id) !== 1) {
+                throw new HttpException('keptAttachmentIds must be a list.', 400);
+            }
+            $kept[] = $id;
+        }
+
+        return $kept;
     }
 
     /** @param array<string, mixed> $input */

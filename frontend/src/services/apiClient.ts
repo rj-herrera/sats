@@ -13,6 +13,18 @@ export function apiUrl(path: string): string {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+export function apiPostForm(
+  path: string,
+  body: FormData,
+): Promise<{ status: number; body: unknown }> {
+  return apiSend(path, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    body,
+  });
+}
+
 export function apiPost(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
   return apiSend(path, {
     method: 'POST',

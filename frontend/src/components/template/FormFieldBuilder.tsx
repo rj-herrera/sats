@@ -8,6 +8,7 @@ import {
   getCurrencyFieldMeta,
   isNumericFieldType,
 } from '@/utils/currencyFields';
+import { FILE_FIELD_RULES } from '@/utils/fileAttachments';
 
 interface FormFieldBuilderProps {
   fields: FormFieldDefinition[];
@@ -55,11 +56,11 @@ function FieldLivePreview({ field }: { field: FormFieldDefinition }) {
   const [value, setValue] = useState<FieldValue>(() =>
     defaultPreviewValue(field.type),
   );
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
 
   useEffect(() => {
     setValue(defaultPreviewValue(field.type));
-    setFile(null);
+    setFiles([]);
   }, [field.type, field.id]);
 
   const previewField: FormFieldDefinition = {
@@ -77,9 +78,9 @@ function FieldLivePreview({ field }: { field: FormFieldDefinition }) {
         <DynamicFormField
           field={previewField}
           value={value}
-          file={file}
+          files={files}
           onChange={setValue}
-          onFileChange={setFile}
+          onFilesChange={setFiles}
         />
       </div>
     </div>
@@ -216,6 +217,14 @@ export function FormFieldBuilder({
                               ? field.options
                               : [{ value: 'option_1', label: 'Option 1' }]
                             : undefined,
+                        ...(type === 'file'
+                          ? {
+                              placeholder: undefined,
+                              helpText: undefined,
+                              accept: undefined,
+                              maxFileSizeMb: undefined,
+                            }
+                          : {}),
                       });
                     }}
                     className="w-full rounded-md border border-brand-200 py-2 pr-10 pl-3 text-sm"
@@ -238,30 +247,36 @@ export function FormFieldBuilder({
                   />
                   <span className="text-sm text-brand-800">Required</span>
                 </label>
-                <label className="block sm:col-span-2">
-                  <span className="mb-1 block text-xs font-medium text-brand-600">
-                    Placeholder
-                  </span>
-                  <input
-                    value={field.placeholder ?? ''}
-                    onChange={(e) =>
-                      updateField(index, { placeholder: e.target.value })
-                    }
-                    className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="block sm:col-span-2">
-                  <span className="mb-1 block text-xs font-medium text-brand-600">
-                    Help text
-                  </span>
-                  <input
-                    value={field.helpText ?? ''}
-                    onChange={(e) =>
-                      updateField(index, { helpText: e.target.value })
-                    }
-                    className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
-                  />
-                </label>
+                {field.type !== 'file' ? (
+                  <>
+                    <label className="block sm:col-span-2">
+                      <span className="mb-1 block text-xs font-medium text-brand-600">
+                        Placeholder
+                      </span>
+                      <input
+                        value={field.placeholder ?? ''}
+                        onChange={(e) =>
+                          updateField(index, { placeholder: e.target.value })
+                        }
+                        className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="mb-1 block text-xs font-medium text-brand-600">
+                        Help text
+                      </span>
+                      <input
+                        value={field.helpText ?? ''}
+                        onChange={(e) =>
+                          updateField(index, { helpText: e.target.value })
+                        }
+                        className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <p className="text-sm text-brand-600 sm:col-span-2">{FILE_FIELD_RULES}</p>
+                )}
 
                 {(field.type === 'text' || field.type === 'textarea') && (
                   <label className="block">
@@ -314,42 +329,6 @@ export function FormFieldBuilder({
                         onChange={(e) =>
                           updateField(index, {
                             max:
-                              e.target.value === ''
-                                ? undefined
-                                : Number(e.target.value),
-                          })
-                        }
-                        className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
-                      />
-                    </label>
-                  </>
-                )}
-
-                {field.type === 'file' && (
-                  <>
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-brand-600">
-                        Allowed types
-                      </span>
-                      <input
-                        value={field.accept ?? ''}
-                        onChange={(e) =>
-                          updateField(index, { accept: e.target.value })
-                        }
-                        placeholder=".pdf,.docx,image/*"
-                        className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-brand-600">
-                        Max size (MB)
-                      </span>
-                      <input
-                        type="number"
-                        value={field.maxFileSizeMb ?? ''}
-                        onChange={(e) =>
-                          updateField(index, {
-                            maxFileSizeMb:
                               e.target.value === ''
                                 ? undefined
                                 : Number(e.target.value),

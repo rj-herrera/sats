@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\AttachmentStore;
 use App\Database;
 use App\HttpException;
 use App\RequestFields;
@@ -22,6 +23,7 @@ final class RequestModel
      * @param array<string, mixed> $fieldValues
      * @param list<array<string, mixed>> $assignments
      * @param array{id: string, name: string, departmentId: string|null, departmentName: string|null} $group
+     * @param list<array{fieldId: string, tmp: string, name: string, size: int, extension: string, type: string}> $uploads
      * @return array<string, mixed>
      */
     public function create(
@@ -30,11 +32,21 @@ final class RequestModel
         array $fieldValues,
         array $assignments,
         array $group,
+        array $uploads = [],
     ): array {
         if ($assignments === []) {
             throw new HttpException('This request has nobody assigned to act on it.', 400);
         }
 
+        $planned = [];
+        foreach ($uploads as $upload) {
+            $planned[] = ['fieldId' => $upload['fieldId']];
+        }
+        AttachmentStore::assertForFields($template['fields'], $planned);
+
+        $store = new AttachmentStore();
+        $saved = [];
+        $requestId = 0;
         $pdo = $this->db();
         $now = $this->now();
         $pdo->beginTransaction();
@@ -77,6 +89,7 @@ final class RequestModel
                 'updatedAt' => $now,
             ]);
             $requestId = (int) $pdo->lastInsertId();
+            $saved = $store->persist($requestId, $uploads);
 
             $revision = $pdo->prepare(
                 'INSERT INTO request_revisions (
@@ -87,7 +100,7 @@ final class RequestModel
                  ) VALUES (
                     :requestId, 1, :templateVersionId,
                     :templateName, :workflowType,
-                    :fieldDefinitions, :fieldValues, :workflowSnapshot, \'[]\',
+                    :fieldDefinitions, :fieldValues, :workflowSnapshot, :attachments,
                     :submittedBy, :submittedByName, :submittedAt, \'Pending\'
                  )'
             );
@@ -99,6 +112,7 @@ final class RequestModel
                 'fieldDefinitions' => $definitions,
                 'fieldValues' => $values,
                 'workflowSnapshot' => $workflow,
+                'attachments' => $this->encodeList($saved),
                 'submittedBy' => (string) $actor['id'],
                 'submittedByName' => (string) $actor['name'],
                 'submittedAt' => $now,
@@ -122,6 +136,9 @@ final class RequestModel
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
+            }
+            if ($requestId > 0) {
+                $store->deleteSaved($requestId, $saved);
             }
             throw $exception;
         }
@@ -227,10 +244,20 @@ final class RequestModel
     /**
      * @param array<string, mixed> $actor
      * @param array<mixed> $fieldValues
+     * @param list<array{fieldId: string, tmp: string, name: string, size: int, extension: string, type: string}> $uploads
+     * @param list<string>|null $keptAttachmentIds Null keeps every current file.
      * @return array<string, mixed>
      */
-    public function resubmit(int $id, array $actor, array $fieldValues, int $rowVersion): array
-    {
+    public function resubmit(
+        int $id,
+        array $actor,
+        array $fieldValues,
+        int $rowVersion,
+        array $uploads = [],
+        ?array $keptAttachmentIds = null,
+    ): array {
+        $store = new AttachmentStore();
+        $saved = [];
         $pdo = $this->db();
         $now = $this->now();
         $pdo->beginTransaction();
@@ -250,7 +277,18 @@ final class RequestModel
             $definitions = $this->decodeList($revision['field_definitions_json']);
             $values = RequestFields::normalize($definitions, $fieldValues);
             $previousValues = $this->decodeObject($revision['field_values_json']);
-            if (RequestFields::unchanged($definitions, $previousValues, $values)) {
+            $previousAttachments = $this->decodeList($revision['attachments_json']);
+            $kept = $this->keptAttachments($previousAttachments, $keptAttachmentIds);
+            $planned = $kept;
+            foreach ($uploads as $upload) {
+                $planned[] = ['fieldId' => $upload['fieldId']];
+            }
+            AttachmentStore::assertForFields($definitions, $planned);
+            $saved = $store->persist($id, $uploads);
+            $nextAttachments = array_merge($kept, $saved);
+            $answersSame = RequestFields::unchanged($definitions, $previousValues, $values);
+            if ($answersSame && $this->attachmentIds($previousAttachments) === $this->attachmentIds($nextAttachments)) {
+                $store->deleteSaved($id, $saved);
                 throw new HttpException('Change at least one answer before resubmitting.', 400);
             }
             $nextNumber = (int) $revision['revision_number'] + 1;
@@ -264,7 +302,7 @@ final class RequestModel
                  ) VALUES (
                     :requestId, :revisionNumber, :templateVersionId,
                     :templateName, :workflowType,
-                    :fieldDefinitions, :fieldValues, :workflowSnapshot, \'[]\',
+                    :fieldDefinitions, :fieldValues, :workflowSnapshot, :attachments,
                     :submittedBy, :submittedByName, :submittedAt, \'Pending\'
                  )'
             );
@@ -281,6 +319,7 @@ final class RequestModel
                 'workflowSnapshot' => is_string($revision['workflow_snapshot_json'])
                     ? $revision['workflow_snapshot_json']
                     : json_encode($revision['workflow_snapshot_json'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'attachments' => $this->encodeList($nextAttachments),
                 'submittedBy' => $employeeId,
                 'submittedByName' => (string) $actor['name'],
                 'submittedAt' => $now,
@@ -322,6 +361,7 @@ final class RequestModel
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            $store->deleteSaved($id, $saved);
             throw $exception;
         }
 
@@ -1150,7 +1190,7 @@ final class RequestModel
                 ? null
                 : $this->iso((string) $request['last_resubmitted_at']),
             'fieldValues' => $this->decodeObject($revision['field_values_json']),
-            'attachments' => [],
+            'attachments' => $this->presentAttachments((int) $request['id'], $revision['attachments_json']),
             'fieldDefinitions' => $this->decodeList($revision['field_definitions_json']),
             'reviewers' => $people['reviewers'],
             'approvalSteps' => $people['approvalSteps'],
@@ -1182,7 +1222,7 @@ final class RequestModel
             'submittedByName' => (string) $revision['submitted_by_name'],
             'submissionType' => (int) $revision['revision_number'] === 1 ? 'original' : 'resubmitted',
             'fieldValues' => $this->decodeObject($revision['field_values_json']),
-            'attachments' => [],
+            'attachments' => $this->presentAttachments((int) $revision['request_id'], $revision['attachments_json']),
             'reviewers' => $people['reviewers'],
             'approvalSteps' => $people['approvalSteps'],
             'outcome' => (string) $revision['outcome'],
@@ -1261,6 +1301,129 @@ final class RequestModel
     }
 
     /** @param array<string, mixed> $value */
+    /**
+     * @return array{fileName: string, fileType: string, path: string}
+     */
+    public function attachmentFile(int $requestId, string $attachmentId, string $employeeId): array
+    {
+        if (preg_match('/^[a-f0-9]{32}$/', $attachmentId) !== 1) {
+            throw new HttpException('File not found.', 404);
+        }
+
+        $pdo = $this->db();
+        $this->assertVisible($pdo, $requestId, $employeeId);
+        $statement = $pdo->prepare(
+            'SELECT attachments_json FROM request_revisions WHERE request_id = :requestId'
+        );
+        $statement->execute(['requestId' => $requestId]);
+        $store = new AttachmentStore();
+        foreach ($statement->fetchAll() as $row) {
+            foreach ($this->decodeList($row['attachments_json']) as $attachment) {
+                if (!is_array($attachment) || (string) ($attachment['id'] ?? '') !== $attachmentId) {
+                    continue;
+                }
+                $storedName = (string) ($attachment['storedName'] ?? '');
+                $path = $store->absolutePath($requestId, $storedName);
+                if ($path === null) {
+                    throw new HttpException('File not found.', 404);
+                }
+
+                return [
+                    'fileName' => (string) ($attachment['fileName'] ?? 'file'),
+                    'fileType' => (string) ($attachment['fileType'] ?? 'application/octet-stream'),
+                    'path' => $path,
+                ];
+            }
+        }
+
+        throw new HttpException('File not found.', 404);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $previous
+     * @param list<string>|null $keptIds
+     * @return list<array<string, mixed>>
+     */
+    private function keptAttachments(array $previous, ?array $keptIds): array
+    {
+        if ($keptIds === null) {
+            return $previous;
+        }
+
+        $byId = [];
+        foreach ($previous as $attachment) {
+            if (!is_array($attachment)) {
+                continue;
+            }
+            $id = (string) ($attachment['id'] ?? '');
+            if ($id !== '') {
+                $byId[$id] = $attachment;
+            }
+        }
+
+        $kept = [];
+        foreach ($keptIds as $id) {
+            if (!isset($byId[$id])) {
+                throw new HttpException('A selected file is not on this request.', 400);
+            }
+            $kept[] = $byId[$id];
+        }
+
+        return $kept;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $attachments
+     * @return list<string>
+     */
+    private function attachmentIds(array $attachments): array
+    {
+        $ids = [];
+        foreach ($attachments as $attachment) {
+            if (!is_array($attachment)) {
+                continue;
+            }
+            $id = (string) ($attachment['id'] ?? '');
+            if ($id !== '') {
+                $ids[] = $id;
+            }
+        }
+        sort($ids);
+
+        return $ids;
+    }
+
+    /** @param list<array<string, mixed>> $attachments */
+    private function encodeList(array $attachments): string
+    {
+        return json_encode($attachments, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function presentAttachments(int $requestId, mixed $json): array
+    {
+        $presented = [];
+        foreach ($this->decodeList($json) as $attachment) {
+            if (!is_array($attachment)) {
+                continue;
+            }
+            $id = (string) ($attachment['id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $presented[] = [
+                'id' => $id,
+                'fieldId' => (string) ($attachment['fieldId'] ?? ''),
+                'fileName' => (string) ($attachment['fileName'] ?? ''),
+                'fileSize' => (int) ($attachment['fileSize'] ?? 0),
+                'fileType' => (string) ($attachment['fileType'] ?? ''),
+                'downloadUrl' => '/requests/' . $requestId . '/attachments/' . $id,
+            ];
+        }
+
+        return $presented;
+    }
+
     private function encodeObject(array $value): string
     {
         $flags = JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;

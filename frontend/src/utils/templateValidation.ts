@@ -88,14 +88,6 @@ function validateFields(fields: FormFieldDefinition[]): {
       errors.push(`Field "${field.label}" has an invalid max length.`);
     }
 
-    if (
-      field.type === 'file' &&
-      field.maxFileSizeMb != null &&
-      field.maxFileSizeMb <= 0
-    ) {
-      fieldErrors[field.id] = 'Max file size must be greater than zero.';
-      errors.push(`Field "${field.label}" has an invalid max file size.`);
-    }
   }
 
   return { errors: [...new Set(errors)], fieldErrors };
