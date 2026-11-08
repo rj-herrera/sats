@@ -9,7 +9,9 @@ import {
 } from '@/components/template/TemplateBasicInformation';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
 import { TemplateStatusBadge } from '@/components/template/TemplateStatusBadge';
+import { TemplateStatusConfirmDialog } from '@/components/template/TemplateStatusConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
 import { createFieldId } from '@/services/templateNormalizer';
@@ -170,6 +172,7 @@ export function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = !id;
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [existing, setExisting] = useState<FormTemplate | undefined>();
@@ -181,10 +184,10 @@ export function TemplateEditorPage() {
   const [state, setState] = useState<EditorState | null>(null);
   const [baseline, setBaseline] = useState('');
   const [saving, setSaving] = useState(false);
+  const [activateOpen, setActivateOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
 
   // Re-seed only when the signed-in user or template changes. A refreshed user
   // object with the same id (window focus) must not discard in-progress input.
@@ -220,7 +223,6 @@ export function TemplateEditorPage() {
     setBaseline(JSON.stringify(persistedEditorState(initial)));
     setStepIndex(0);
     setError(null);
-    setMessage(null);
   }, [draftKey, templateLoaded]);
 
   const dirty = state
@@ -289,18 +291,17 @@ export function TemplateEditorPage() {
   const patch = (partial: Partial<EditorState>) => {
     setState((prev) => (prev ? { ...prev, ...partial } : prev));
     setError(null);
-    setMessage(null);
   };
 
   const persist = async (status: FormTemplate['status']) => {
     setSaving(true);
     setError(null);
-    setMessage(null);
     setFieldErrors({});
 
     const scopeError = basicStepError(state);
     if (scopeError) {
       setSaving(false);
+      setActivateOpen(false);
       setError(scopeError);
       setStepIndex(0);
       return;
@@ -315,6 +316,7 @@ export function TemplateEditorPage() {
       setFieldErrors(activation.fieldErrors);
       if (!activation.valid) {
         setSaving(false);
+        setActivateOpen(false);
         setError(activation.errors.join(' '));
         if (Object.keys(activation.fieldErrors).length > 0) setStepIndex(1);
         else if (saved.workflow.type === 'hierarchy_approval') setStepIndex(2);
@@ -351,6 +353,7 @@ export function TemplateEditorPage() {
     setSaving(false);
 
     if (!result.ok) {
+      setActivateOpen(false);
       setError(result.error);
       return;
     }
@@ -358,17 +361,23 @@ export function TemplateEditorPage() {
     setExisting(result.data);
 
     if (status === 'Active') {
-      navigate(paths.templates, {
-        replace: true,
-        state: { message: 'Template saved and activated.' },
+      showToast({
+        tone: 'success',
+        title: 'Template activated',
+        description: `${result.data.name} was activated.`,
       });
+      navigate(paths.templates, { replace: true });
       return;
     }
 
     const nextState = buildInitialState(user, result.data);
     setState(nextState);
     setBaseline(JSON.stringify(persistedEditorState(nextState)));
-    setMessage('Template saved as Inactive.');
+    showToast({
+      tone: 'success',
+      title: 'Template deactivated',
+      description: `${result.data.name} was deactivated.`,
+    });
   };
 
   const previewTemplate = toPreviewTemplate(
@@ -389,7 +398,6 @@ export function TemplateEditorPage() {
 
   const goNext = () => {
     setError(null);
-    setMessage(null);
 
     if (currentStep.id === 'basic') {
       const scopeError = basicStepError(state);
@@ -429,11 +437,6 @@ export function TemplateEditorPage() {
           <TemplateStatusBadge status={state.status} />
         </div>
 
-        {message ? (
-          <div className="shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            {message}
-          </div>
-        ) : null}
         {error ? (
           <div
             className="shrink-0 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
@@ -522,7 +525,7 @@ export function TemplateEditorPage() {
 
       <div className="shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6">
         {isLastStep ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               disabled={saving}
@@ -531,25 +534,14 @@ export function TemplateEditorPage() {
             >
               Previous
             </button>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                to={paths.templates}
-                onClick={(e) => {
-                  if (!confirmLeave()) e.preventDefault();
-                }}
-                className="rounded-md border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50"
-              >
-                Cancel
-              </Link>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => persist('Active')}
-                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
-              >
-                {saving ? 'Activating…' : 'Activate Template'}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => setActivateOpen(true)}
+              className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-50"
+            >
+              Activate Template
+            </button>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -572,6 +564,19 @@ export function TemplateEditorPage() {
           </div>
         )}
       </div>
+
+      <TemplateStatusConfirmDialog
+        open={activateOpen}
+        action="activate"
+        templateName={state.name.trim() || 'this template'}
+        submitting={saving}
+        onCancel={() => {
+          if (!saving) setActivateOpen(false);
+        }}
+        onConfirm={() => {
+          void persist('Active');
+        }}
+      />
     </div>
   );
 }

@@ -1,4 +1,6 @@
-import { Archive, Pencil, Power } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Archive, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { FormTemplate } from '@/types';
 import { paths } from '@/routes/paths';
@@ -12,6 +14,65 @@ interface TemplateListProps {
   onActivate: (id: string) => void;
   onDeactivate: (id: string) => void;
   onPreview: (id: string) => void;
+}
+
+function TemplateName({ name, description }: { name: string; description: string }) {
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [box, setBox] = useState<{ top: number; left: number; width: number } | null>(null);
+  const text = description.trim();
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const anchor = anchorRef.current;
+    const tip = tipRef.current;
+    if (!anchor || !tip) return;
+    const rect = anchor.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - 8 - width));
+    const tipHeight = tip.offsetHeight;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top =
+      spaceBelow < tipHeight + 12 && rect.top > tipHeight + 12
+        ? rect.top - tipHeight - 6
+        : rect.bottom + 6;
+    setBox({ top, left, width });
+  }, [open, text]);
+
+  return (
+    <>
+      <span
+        ref={anchorRef}
+        className="font-medium text-brand-900"
+        onMouseEnter={() => {
+          if (text) setOpen(true);
+        }}
+        onMouseLeave={() => setOpen(false)}
+      >
+        {name}
+      </span>
+      {open && text
+        ? createPortal(
+            <span
+              ref={tipRef}
+              role="tooltip"
+              style={{
+                position: 'fixed',
+                top: box?.top ?? -9999,
+                left: box?.left ?? 0,
+                width: box?.width ?? 320,
+                visibility: box ? 'visible' : 'hidden',
+              }}
+              className="pointer-events-none z-[80] rounded-md border border-brand-200 bg-white px-3 py-2 text-left text-xs font-normal leading-relaxed text-brand-700 shadow-lg"
+            >
+              {text}
+            </span>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }
 
 export function TemplateList({
@@ -53,10 +114,7 @@ export function TemplateList({
                   className="cursor-pointer hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/40"
                 >
                   <td className="max-w-[16rem] px-4 py-3">
-                    <p className="font-medium text-brand-900">{template.name}</p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-brand-500">
-                      {template.description || 'No description'}
-                    </p>
+                    <TemplateName name={template.name} description={template.description} />
                   </td>
                   <td className="px-4 py-3 text-brand-700">
                     {template.scope === 'generic' ? 'Generic' : 'Group'}
@@ -108,7 +166,7 @@ export function TemplateList({
                           }}
                           className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50"
                         >
-                          <Power size={16} />
+                          <Archive size={16} />
                         </button>
                       )}
                     </div>

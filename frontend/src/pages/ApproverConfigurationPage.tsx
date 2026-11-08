@@ -190,8 +190,8 @@ export function ApproverConfigurationPage() {
 
           <section className="flex min-h-0 min-w-0 w-full max-h-full flex-col self-start overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm lg:flex-1">
             <div className="shrink-0 border-b border-brand-100 p-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="block sm:col-span-2">
+              <div>
+                <label className="block">
                   <span className="mb-1 block text-xs font-medium text-brand-600">Search</span>
                   <input
                     type="search"

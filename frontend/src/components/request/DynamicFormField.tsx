@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Loader2, Paperclip, X } from 'lucide-react';
+import { FieldOptionSelect } from '@/components/request/FieldOptionSelect';
 import type { AttachmentMetadata, FieldValue, FormFieldDefinition } from '@/types';
 import {
   getCurrencyFieldMeta,
@@ -130,32 +131,19 @@ export function DynamicFormField({
   if (field.type === 'select') {
     const selected = typeof value === 'string' ? value : '';
     const prompt = field.placeholder?.trim() || 'Select…';
-    const selectClass = `${controlClass
-      .replace('px-3', 'pl-3 pr-10')
-      .replace(
-        'text-brand-900',
-        selected === '' ? 'text-brand-400' : 'text-brand-900',
-      )} [&>option]:text-brand-900`;
 
     return (
       <div>
         {label}
-        <select
+        <FieldOptionSelect
           id={inputId}
-          className={selectClass}
           value={selected}
-          required={field.required}
-          aria-invalid={Boolean(error)}
-          aria-describedby={describedBy}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">{prompt}</option>
-          {(field.options ?? []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          prompt={prompt}
+          options={field.options ?? []}
+          invalid={Boolean(error)}
+          describedBy={describedBy}
+          onChange={onChange}
+        />
         {help}
         {errorMsg}
       </div>

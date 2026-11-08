@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileStack, Plus, X } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { TemplateFilters } from '@/components/template/TemplateFilters';
 import { TemplateList } from '@/components/template/TemplateList';
 import { TemplatePreview } from '@/components/template/TemplatePreview';
@@ -10,6 +10,7 @@ import {
   type TemplateStatusAction,
 } from '@/components/template/TemplateStatusConfirmDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
 import { listManageableTemplates, setTemplateStatusRecord } from '@/services/templateApi';
@@ -23,20 +24,11 @@ import {
 import type { FormTemplate } from '@/types';
 import { userHasRole } from '@/utils/permissions';
 
-function createdTemplateMessage(state: unknown): string | null {
-  if (!state || typeof state !== 'object' || !('message' in state)) return null;
-  const message = state.message;
-  return typeof message === 'string' && message.trim() ? message : null;
-}
-
 export function TemplatesPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const location = useLocation();
-  const navigate = useNavigate();
   const [filters, setFilters] = useState<TemplateListFilters>(EMPTY_TEMPLATE_FILTERS);
-  const [message, setMessage] = useState<string | null>(() =>
-    createdTemplateMessage(location.state),
-  );
   const [error, setError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -74,11 +66,6 @@ export function TemplatesPage() {
     () => filterTemplates(templates, filters),
     [templates, filters],
   );
-
-  useEffect(() => {
-    if (!createdTemplateMessage(location.state)) return;
-    navigate(paths.templates, { replace: true, state: null });
-  }, [location.state, navigate]);
 
   useEffect(() => {
     if (!previewId) return;
@@ -120,7 +107,6 @@ export function TemplatesPage() {
     const template = templates.find((t) => t.id === id);
     if (!template) return;
     setError(null);
-    setMessage(null);
     setStatusAction({ id, name: template.name, action });
   };
 
@@ -135,9 +121,9 @@ export function TemplatesPage() {
     if (!template) return;
     setStatusSubmitting(true);
     setError(null);
-    setMessage(null);
 
-    const nextStatus = statusAction.action === 'activate' ? 'Active' : 'Inactive';
+    const activating = statusAction.action === 'activate';
+    const nextStatus = activating ? 'Active' : 'Inactive';
     void setTemplateStatusRecord(template, nextStatus).then((result) => {
       setStatusSubmitting(false);
       if (!result.ok) {
@@ -146,11 +132,11 @@ export function TemplatesPage() {
         return;
       }
 
-      setMessage(
-        statusAction.action === 'activate'
-          ? `“${result.data.name}” activated.`
-          : `“${result.data.name}” deactivated.`,
-      );
+      showToast({
+        tone: 'success',
+        title: activating ? 'Template activated' : 'Template deactivated',
+        description: `${result.data.name} was ${activating ? 'activated' : 'deactivated'}.`,
+      });
       setStatusAction(null);
       refresh();
     });
@@ -179,11 +165,6 @@ export function TemplatesPage() {
           </Link>
         </div>
 
-        {message ? (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            {message}
-          </div>
-        ) : null}
         {error ? (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
             {error}

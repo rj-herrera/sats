@@ -26,6 +26,8 @@ function fieldTypeLabel(type: FormFieldType): string {
   switch (type) {
     case 'textarea':
       return 'Textarea';
+    case 'url':
+      return 'URL';
     case 'select':
       return 'Select dropdown';
     case 'radio':

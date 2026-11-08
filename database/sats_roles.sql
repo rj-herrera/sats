@@ -1,6 +1,8 @@
 -- SATS role catalogue and assignments.
 -- Does not copy employees. employee_id is the decimal string of employee_list.id.
--- No employees are assigned here.
+-- Active employees are granted APPROVER at the end of this file when their
+-- directory designation has section = 1, or designation id 10 or 21.
+-- Employee 520 is granted ADMIN. Existing role rows are left unchanged.
 
 CREATE DATABASE IF NOT EXISTS sats
   CHARACTER SET utf8mb4
@@ -72,3 +74,103 @@ CREATE TABLE IF NOT EXISTS sats_access_audit (
     FOREIGN KEY (role_code) REFERENCES sats_roles (role_code),
   CONSTRAINT chk_access_audit_action CHECK (action IN ('grant', 'revoke', 'update'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Approvers from the company directory.
+-- designation_list.section = 1 covers supervisor through executive titles.
+-- designation_list.id 10 (CAD Supervisor) and 21 (Senior Software Supervisor)
+-- are included even though their section is not 1.
+-- Only current employees (emp_status = 1) are granted. Inactive employees stay out
+-- of the approver list. Rows already present, including manual grants and removals,
+-- are not inserted again and are not reactivated.
+-- kdtphdb_new is the directory database (DB_NAME). Re-running this file is safe.
+INSERT INTO sats_access_audit (
+  actor_employee_id, target_employee_id, role_code, action,
+  previous_is_active, new_is_active, previous_group_id, new_group_id, created_at
+)
+SELECT
+  'system',
+  CAST(e.id AS CHAR),
+  'APPROVER',
+  'grant',
+  NULL,
+  1,
+  NULL,
+  NULL,
+  UTC_TIMESTAMP(6)
+FROM kdtphdb_new.employee_list e
+INNER JOIN kdtphdb_new.designation_list d ON d.id = e.designation
+WHERE (d.section = 1 OR d.id IN (10, 21))
+  AND e.emp_status = 1
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sats_role_assignments existing
+    WHERE existing.employee_id = CAST(e.id AS CHAR) COLLATE utf8mb4_unicode_ci
+      AND existing.role_code = 'APPROVER'
+  );
+
+INSERT INTO sats_role_assignments (
+  employee_id, role_code, group_id, is_active, assigned_by, assigned_at
+)
+SELECT
+  CAST(e.id AS CHAR),
+  'APPROVER',
+  NULL,
+  1,
+  'system',
+  UTC_TIMESTAMP(6)
+FROM kdtphdb_new.employee_list e
+INNER JOIN kdtphdb_new.designation_list d ON d.id = e.designation
+WHERE (d.section = 1 OR d.id IN (10, 21))
+  AND e.emp_status = 1
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sats_role_assignments existing
+    WHERE existing.employee_id = CAST(e.id AS CHAR) COLLATE utf8mb4_unicode_ci
+      AND existing.role_code = 'APPROVER'
+  );
+
+-- Bootstrap administrator: employee_list.id 520.
+-- Skipped when that employee is inactive or an ADMIN row already exists.
+INSERT INTO sats_access_audit (
+  actor_employee_id, target_employee_id, role_code, action,
+  previous_is_active, new_is_active, previous_group_id, new_group_id, created_at
+)
+SELECT
+  'system',
+  '520',
+  'ADMIN',
+  'grant',
+  NULL,
+  1,
+  NULL,
+  NULL,
+  UTC_TIMESTAMP(6)
+FROM kdtphdb_new.employee_list e
+WHERE e.id = 520
+  AND e.emp_status = 1
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sats_role_assignments existing
+    WHERE existing.employee_id = '520'
+      AND existing.role_code = 'ADMIN'
+  );
+
+INSERT INTO sats_role_assignments (
+  employee_id, role_code, group_id, is_active, assigned_by, assigned_at
+)
+SELECT
+  '520',
+  'ADMIN',
+  NULL,
+  1,
+  'system',
+  UTC_TIMESTAMP(6)
+FROM kdtphdb_new.employee_list e
+WHERE e.id = 520
+  AND e.emp_status = 1
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sats_role_assignments existing
+    WHERE existing.employee_id = '520'
+      AND existing.role_code = 'ADMIN'
+  );
