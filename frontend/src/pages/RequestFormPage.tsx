@@ -263,7 +263,7 @@ export function RequestFormPage() {
       </div>
 
       {selectedTemplate ? (
-        <div className="shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6">
+        <div className="mt-auto shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6">
           <RequestFormActions
             canSubmit={canAttemptSubmit && !hierarchyBlocksSubmit}
             submitting={submitting}
