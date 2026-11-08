@@ -84,6 +84,10 @@ export function normalizeUser(
       typeof u.hasApprovalResponsibility === 'boolean'
         ? u.hasApprovalResponsibility
         : hasApprover,
+    managedGroupId:
+      typeof u.managedGroupId === 'string' && u.managedGroupId.trim() !== ''
+        ? u.managedGroupId.trim()
+        : null,
     status,
     createdAt: typeof u.createdAt === 'string' ? u.createdAt : now,
     updatedAt: typeof u.updatedAt === 'string' ? u.updatedAt : now,

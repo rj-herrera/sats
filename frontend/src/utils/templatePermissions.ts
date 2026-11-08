@@ -23,8 +23,8 @@ export function canCreateGenericTemplate(user: User | null): boolean {
 /**
  * Whether the user may edit / activate / deactivate this template.
  * - Admin: any template
- * - Manager: only group-scoped templates owned by their group
- * - Generic templates are Admin-only for management (not editable by group leaders)
+ * - Designated approver: group-scoped templates owned by their primary group
+ * - Generic templates are Admin-only for management
  *
  * Demonstrative for localStorage MVP — PHP must enforce server-side.
  */
@@ -38,10 +38,13 @@ export function canManageTemplate(
     return true;
   }
 
+  const ownGroupId = user.groupId;
   if (
+    (userHasRole(user, 'approver') || userHasRole(user, 'groupManager')) &&
     hasPermission(user, 'templates:manage_group') &&
     template.scope === 'group' &&
-    template.owningGroupId === user.groupId
+    ownGroupId !== '' &&
+    template.owningGroupId === ownGroupId
   ) {
     return true;
   }

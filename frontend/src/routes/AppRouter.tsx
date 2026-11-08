@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
+import { AccessManagementPage } from '@/pages/AccessManagementPage';
 import { ActionInboxPage } from '@/pages/ActionInboxPage';
+import { ApproverConfigurationPage } from '@/pages/ApproverConfigurationPage';
 import { MyRequestsPage } from '@/pages/MyRequestsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { EditRequestPage } from '@/pages/EditRequestPage';
@@ -75,6 +77,8 @@ export function AppRouter() {
             </ProtectedRoute>
           }
         />
+        <Route path={paths.approverConfiguration} element={<ApproverConfigurationPage />} />
+        <Route path={paths.accessManagement} element={<AccessManagementPage />} />
         <Route
           path={paths.templates}
           element={

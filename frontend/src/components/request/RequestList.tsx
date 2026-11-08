@@ -29,7 +29,7 @@ export function RequestList({ requests }: RequestListProps) {
       <div className="hidden border-t border-brand-100 md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="text-sm font-medium text-slate-500">
+            <thead className="text-sm font-medium text-slate-500 [&_th]:font-medium">
               <tr className="border-b border-slate-200">
                 <th className="px-5 py-3.5 font-medium">Request No.</th>
                 <th className="px-5 py-3.5 font-medium">Title</th>

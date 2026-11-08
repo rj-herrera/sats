@@ -29,7 +29,7 @@ describe('permissions', () => {
     expect(getPrimaryRoleLabel(employee)).toBe('Employee');
   });
 
-  it('gives Approvers group template and inbox permissions', () => {
+  it('gives Approvers inbox access and their own group templates', () => {
     const approver = userById('usr-approver-1');
     expect(hasPermission(approver, 'templates:manage_group')).toBe(true);
     expect(hasPermission(approver, 'inbox:access')).toBe(true);
@@ -71,7 +71,7 @@ describe('templatePermissions', () => {
     owningGroupId: null,
   } as FormTemplate;
 
-  it('allows Approvers only their own group templates', () => {
+  it('allows an approver only their own group templates', () => {
     const approver = userById('usr-approver-1');
     expect(canManageTemplate(approver, groupTemplate)).toBe(true);
     expect(canManageTemplate(approver, otherGroupTemplate)).toBe(false);

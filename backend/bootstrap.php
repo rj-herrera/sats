@@ -109,7 +109,7 @@ function send_cors_headers(): void
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
     header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type');
 }
 
@@ -129,6 +129,7 @@ require_once __DIR__ . '/TemplateValidator.php';
 require_once __DIR__ . '/RequestFields.php';
 require_once __DIR__ . '/AttachmentStore.php';
 require_once __DIR__ . '/Controllers/DirectoryController.php';
+require_once __DIR__ . '/Controllers/AdminController.php';
 require_once __DIR__ . '/Controllers/TemplateController.php';
 require_once __DIR__ . '/Controllers/RequestController.php';
 require_once __DIR__ . '/DevLogin.php';

@@ -16,27 +16,29 @@ function decisionCopy(decision: DecisionType) {
   switch (decision) {
     case 'approve':
       return {
-        title: 'Approve',
-        summary:
-          'Confirm that you approve this request (or complete your review). An optional comment may be added.',
+        title: 'Approve request?',
+        summary: 'Are you sure you want to approve this request?',
         commentLabel: 'Comment (optional)',
-        confirmLabel: 'Confirm approval',
+        confirmLabel: 'Approve',
+        pendingLabel: 'Approving…',
         requireComment: false,
       };
     case 'reject':
       return {
-        title: 'Reject request',
-        summary: 'Rejecting ends the workflow. A comment explaining the rejection is required.',
+        title: 'Reject request?',
+        summary: 'Are you sure you want to reject this request?',
         commentLabel: 'Rejection reason (required)',
-        confirmLabel: 'Confirm rejection',
+        confirmLabel: 'Reject',
+        pendingLabel: 'Rejecting…',
         requireComment: true,
       };
     case 'return':
       return {
-        title: 'Return for revision',
-        summary: 'Return this request so the requester can revise it.',
+        title: 'Return for revision?',
+        summary: 'Are you sure you want to return this request for revision?',
         commentLabel: 'Revision notes (required)',
-        confirmLabel: 'Confirm return',
+        confirmLabel: 'Return',
+        pendingLabel: 'Returning…',
         requireComment: true,
       };
   }
@@ -85,7 +87,7 @@ export function DecisionConfirmationDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-md rounded-xl border border-brand-100 bg-white p-5 shadow-xl"
+        className="relative z-10 w-full max-w-md rounded-lg border border-brand-100 bg-white p-5 shadow-xl"
       >
         <div className="flex items-start justify-between gap-3">
           <h2 id={titleId} className="text-lg font-semibold text-brand-900">
@@ -102,16 +104,16 @@ export function DecisionConfirmationDialog({
           </button>
         </div>
 
-        <p className="mt-2 text-sm text-brand-600">{copy.summary}</p>
+        <p className="mt-3 text-sm text-brand-600">{copy.summary}</p>
 
         <label className="mt-4 block">
-          <span className="mb-1 block text-xs font-medium text-brand-600">
+          <span className="mb-1 block text-sm font-medium text-brand-800">
             {copy.commentLabel}
           </span>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            rows={4}
+            rows={3}
             disabled={submitting}
             className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm text-brand-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
             placeholder={
@@ -142,13 +144,13 @@ export function DecisionConfirmationDialog({
               decision === 'approve'
                 ? 'bg-emerald-700 hover:bg-emerald-800'
                 : decision === 'reject'
-                  ? 'bg-red-700 hover:bg-red-800'
+                  ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-orange-600 hover:bg-orange-700',
             ].join(' ')}
-            disabled={submitting}
+            disabled={submitting || (copy.requireComment && comment.trim().length === 0)}
             onClick={() => onConfirm(comment)}
           >
-            {submitting ? 'Saving…' : copy.confirmLabel}
+            {submitting ? copy.pendingLabel : copy.confirmLabel}
           </button>
         </div>
       </div>

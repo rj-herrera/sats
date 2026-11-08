@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Controllers\AdminController;
 use App\Controllers\DirectoryController;
 use App\Controllers\RequestController;
 use App\Controllers\TemplateController;
@@ -15,6 +16,7 @@ final class Router
         private readonly TemplateController $templates,
         private readonly RequestController $requests,
         private readonly DevLogin $devLogin,
+        private readonly AdminController $admin,
     ) {
     }
 
@@ -80,6 +82,44 @@ final class Router
 
         if ($path === '/dev/sign-out' && $method === 'POST') {
             $this->devLogin->signOut();
+            return;
+        }
+
+        if ($path === '/admin/approvers' && $method === 'GET') {
+            $this->admin->approvers();
+            return;
+        }
+
+        if ($path === '/admin/approvers' && $method === 'POST') {
+            $this->admin->grantApprover();
+            return;
+        }
+
+        if (preg_match('#^/admin/approvers/(\d+)$#', $path, $matches) === 1) {
+            if ($method === 'PATCH') {
+                $this->admin->updateApprover($matches[1]);
+                return;
+            }
+            json_response(['error' => 'Method not allowed.'], 405);
+            return;
+        }
+
+        if ($path === '/admin/access' && $method === 'GET') {
+            $this->admin->access();
+            return;
+        }
+
+        if ($path === '/admin/access' && $method === 'POST') {
+            $this->admin->grantAccess();
+            return;
+        }
+
+        if (preg_match('#^/admin/access/(\d+)/ADMIN$#', $path, $matches) === 1) {
+            if ($method === 'PATCH') {
+                $this->admin->updateAccess($matches[1], $matches[2]);
+                return;
+            }
+            json_response(['error' => 'Method not allowed.'], 405);
             return;
         }
 

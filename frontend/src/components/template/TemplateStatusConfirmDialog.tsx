@@ -35,10 +35,7 @@ export function TemplateStatusConfirmDialog({
   if (!open || !action) return null;
 
   const isActivate = action === 'activate';
-  const title = isActivate ? 'Activate template' : 'Deactivate template';
-  const summary = isActivate
-    ? `Activate “${templateName}”? It will become available for new requests.`
-    : `Deactivate “${templateName}”? It will no longer be available for new requests.`;
+  const title = isActivate ? 'Activate template?' : 'Deactivate template?';
   const confirmLabel = isActivate ? 'Activate' : 'Deactivate';
 
   return createPortal(
@@ -71,7 +68,10 @@ export function TemplateStatusConfirmDialog({
           </button>
         </div>
 
-        <p className="mt-3 text-sm text-brand-600">{summary}</p>
+        <p className="mt-3 text-sm text-brand-600">
+          Are you sure you want to {isActivate ? 'activate' : 'deactivate'}{' '}
+          <span className="font-semibold">{templateName}</span>?
+        </p>
 
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
@@ -87,13 +87,13 @@ export function TemplateStatusConfirmDialog({
             disabled={submitting}
             onClick={onConfirm}
             className={[
-              'rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
+              'rounded-md px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50',
               isActivate
                 ? 'bg-emerald-700 hover:bg-emerald-800'
                 : 'bg-orange-600 hover:bg-orange-700',
             ].join(' ')}
           >
-            {submitting ? 'Saving…' : confirmLabel}
+            {submitting ? (isActivate ? 'Activating…' : 'Deactivating…') : confirmLabel}
           </button>
         </div>
       </div>

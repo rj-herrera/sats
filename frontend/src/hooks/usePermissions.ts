@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { listCompletedInbox, listInbox } from '@/services/requestApi';
 import {
   canCreateRequest,
   canManageTemplates,
-  hasManagementSidebarSection,
   hasPermission,
   isApprover,
+  isGroupManager,
+  showAdministrationInSidebar,
   showTemplatesInSidebar,
 } from '@/utils/permissions';
 import type { Permission } from '@/types';
@@ -47,16 +48,13 @@ export function usePermissions() {
   }, [user, location.key]);
 
   const inboxAccess = Boolean(
-    user && user.status === 'Active' && (isApprover(user) || hasAssignedWork),
+    user &&
+      user.status === 'Active' &&
+      (isApprover(user) || isGroupManager(user) || hasAssignedWork),
   );
 
   const canManageTemplatesFlag = canManageTemplates(user);
   const showTemplates = showTemplatesInSidebar(user);
-
-  const hasManagementSection = useMemo(() => {
-    if (!user) return false;
-    return inboxAccess || showTemplates || hasManagementSidebarSection(user);
-  }, [user, inboxAccess, showTemplates]);
 
   return {
     user,
@@ -66,8 +64,9 @@ export function usePermissions() {
     pendingInboxCount,
     showActionInboxInSidebar: inboxAccess,
     showTemplatesInSidebar: showTemplates,
+    showAdministrationInSidebar: showAdministrationInSidebar(user),
     canManageTemplates: canManageTemplatesFlag,
     canCreateRequest: canCreateRequest(user),
-    hasManagementSection,
+    hasManagementSection: showTemplates,
   };
 }

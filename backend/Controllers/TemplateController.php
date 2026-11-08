@@ -27,7 +27,13 @@ final class TemplateController
             return;
         }
         if ($view === 'manageable') {
-            json_response($this->templates->listManageable($this->isAdmin($user), (string) $user['groupId']));
+            if (!$this->isAdmin($user) && !$this->managesOwnGroup($user)) {
+                throw new HttpException('You do not have permission to manage templates.', 403);
+            }
+            json_response($this->templates->listManageable(
+                $this->isAdmin($user),
+                $this->isAdmin($user) ? (string) $user['groupId'] : $this->ownGroupId($user),
+            ));
             return;
         }
 
@@ -70,7 +76,7 @@ final class TemplateController
     }
 
     /**
-     * Approvers stay inside their primary group. Administrators keep the submitted scope.
+     * Designated approvers stay inside their primary group. Administrators keep the submitted scope.
      *
      * @param array<string, mixed> $user
      * @param array<string, mixed> $input
@@ -80,16 +86,17 @@ final class TemplateController
         if ($this->isAdmin($user)) {
             return;
         }
-        if (!$this->isApprover($user)) {
+        if (!$this->managesOwnGroup($user)) {
             throw new HttpException('You do not have permission to create templates.', 403);
         }
         if (($input['scope'] ?? '') === 'generic') {
             throw new HttpException('Only an administrator can manage a generic template.', 403);
         }
 
+        $groupId = $this->ownGroupId($user);
         $input['scope'] = 'group';
-        $input['owningGroupId'] = (string) $user['groupId'];
-        $input['allowedGroupIds'] = [(string) $user['groupId']];
+        $input['owningGroupId'] = $groupId;
+        $input['allowedGroupIds'] = [$groupId];
     }
 
     /** @param array<string, mixed> $input */
@@ -138,9 +145,9 @@ final class TemplateController
             return true;
         }
 
-        return $this->isApprover($user)
+        return $this->managesOwnGroup($user)
             && $template['scope'] === 'group'
-            && $template['owningGroupId'] === (string) $user['groupId'];
+            && $template['owningGroupId'] === $this->ownGroupId($user);
     }
 
     /** @param array<string, mixed> $user */
@@ -149,9 +156,17 @@ final class TemplateController
         return in_array('admin', $user['roles'], true);
     }
 
-    /** @param array<string, mixed> $user */
-    private function isApprover(array $user): bool
+    /** A designated approver manages templates for their primary group. */
+    private function managesOwnGroup(array $user): bool
     {
-        return in_array('approver', $user['roles'], true);
+        return in_array('approver', $user['roles'], true) && $this->ownGroupId($user) !== '';
+    }
+
+    /** @param array<string, mixed> $user */
+    private function ownGroupId(array $user): string
+    {
+        $groupId = $user['groupId'] ?? null;
+
+        return is_string($groupId) ? trim($groupId) : '';
     }
 }

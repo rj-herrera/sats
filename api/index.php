@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\DevLogin;
+use App\Controllers\AdminController;
 use App\Controllers\DirectoryController;
 use App\Controllers\RequestController;
 use App\Controllers\TemplateController;
@@ -45,6 +46,7 @@ try {
             $roles,
         ),
         new DevLogin($portalLogin, $employees),
+        new AdminController($actor, $employees, $roles),
     );
     $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', request_path());
 } catch (HttpException $exception) {

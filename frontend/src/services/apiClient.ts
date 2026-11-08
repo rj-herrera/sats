@@ -37,6 +37,18 @@ export function apiPost(path: string, body: unknown): Promise<{ status: number; 
   });
 }
 
+export function apiPatch(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+  return apiSend(path, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 export function apiPut(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
   return apiSend(path, {
     method: 'PUT',

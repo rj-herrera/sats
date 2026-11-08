@@ -1,4 +1,4 @@
-import { Eye, Pencil, Power, PowerOff } from 'lucide-react';
+import { Archive, Pencil, Power } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { FormTemplate } from '@/types';
 import { paths } from '@/routes/paths';
@@ -27,7 +27,7 @@ export function TemplateList({
       <div className="hidden overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm lg:block">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-brand-100 text-left text-sm">
-            <thead className="bg-brand-50/80 text-sm font-medium text-slate-500">
+            <thead className="bg-brand-50/80 text-sm font-medium text-slate-500 [&_th]:font-medium">
               <tr>
                 <th className="px-4 py-3">Template</th>
                 <th className="px-4 py-3">Scope</th>
@@ -40,7 +40,18 @@ export function TemplateList({
             </thead>
             <tbody className="divide-y divide-brand-100">
               {templates.map((template) => (
-                <tr key={template.id} className="hover:bg-brand-100">
+                <tr
+                  key={template.id}
+                  tabIndex={0}
+                  aria-label={`Preview ${template.name}`}
+                  onClick={() => onPreview(template.id)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    onPreview(template.id);
+                  }}
+                  className="cursor-pointer hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/40"
+                >
                   <td className="max-w-[16rem] px-4 py-3">
                     <p className="font-medium text-brand-900">{template.name}</p>
                     <p className="mt-0.5 line-clamp-2 text-xs text-brand-500">
@@ -64,19 +75,11 @@ export function TemplateList({
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <div className="flex justify-center gap-1">
-                      <button
-                        type="button"
-                        title="Preview"
-                        aria-label="Preview"
-                        onClick={() => onPreview(template.id)}
-                        className="rounded-md p-2 text-brand-700 hover:bg-brand-50"
-                      >
-                        <Eye size={16} />
-                      </button>
                       <Link
                         to={paths.templateEdit(template.id)}
                         title="Edit"
                         aria-label="Edit"
+                        onClick={(event) => event.stopPropagation()}
                         className="rounded-md p-2 text-brand-700 hover:bg-brand-50"
                       >
                         <Pencil size={16} />
@@ -86,17 +89,23 @@ export function TemplateList({
                           type="button"
                           title="Deactivate"
                           aria-label="Deactivate"
-                          onClick={() => onDeactivate(template.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeactivate(template.id);
+                          }}
                           className="rounded-md p-2 text-orange-700 hover:bg-orange-50"
                         >
-                          <PowerOff size={16} />
+                          <Archive size={16} />
                         </button>
                       ) : (
                         <button
                           type="button"
                           title="Activate"
                           aria-label="Activate"
-                          onClick={() => onActivate(template.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onActivate(template.id);
+                          }}
                           className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50"
                         >
                           <Power size={16} />

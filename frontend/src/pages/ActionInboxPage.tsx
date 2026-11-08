@@ -8,7 +8,7 @@ import { paths } from '@/routes/paths';
 import { listCompletedInbox, listInbox } from '@/services/requestApi';
 import type { InboxCompletedItem, InboxPendingItem } from '@/services/inboxService';
 import { REQUEST_STATUSES, type RequestStatus } from '@/types';
-import { isApprover } from '@/utils/permissions';
+import { isApprover, isGroupManager } from '@/utils/permissions';
 import { getRequestDisplayTitle } from '@/utils/requestTitle';
 
 type InboxTab = 'pending' | 'completed';
@@ -71,7 +71,7 @@ export function ActionInboxPage() {
     );
   }
 
-  if (!isApprover(user) && pending.length === 0 && completed.length === 0) {
+  if (!isApprover(user) && !isGroupManager(user) && pending.length === 0 && completed.length === 0) {
     return <Navigate to={paths.requests} replace />;
   }
 

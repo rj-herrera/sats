@@ -7,13 +7,14 @@
  * Application roles (generic MVP set).
  * Users may hold multiple roles; Employee capabilities are always retained.
  * - employee: create/view own requests
- * - approver: Action Inbox + group template management when responsible
+ * - approver: persistent Action Inbox and templates for their own group
+ * - groupManager: retained for older records; new access uses approver
  * - admin: generic/shared templates and cross-group template management
  */
-export type Role = 'employee' | 'approver' | 'admin';
+export type Role = 'employee' | 'approver' | 'groupManager' | 'admin';
 
-/** Canonical roles usable in the dev role switcher */
-export const APP_ROLES = ['employee', 'approver', 'admin'] as const;
+/** Canonical roles. The dev switcher still uses employee, approver, and admin. */
+export const APP_ROLES = ['employee', 'approver', 'groupManager', 'admin'] as const;
 
 export type {
   TemplateScope,
@@ -107,6 +108,11 @@ export interface User {
    * Typically aligned with the approver role. Admin alone does not grant this.
    */
   hasApprovalResponsibility: boolean;
+  /**
+   * Group whose templates this person may manage.
+   * Present only for an active group-manager assignment.
+   */
+  managedGroupId?: string | null;
   status: AccountStatus;
   createdAt: string;
   updatedAt: string;

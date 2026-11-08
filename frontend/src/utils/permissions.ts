@@ -16,6 +16,12 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'templates:manage_group',
     'inbox:access',
   ],
+  groupManager: [
+    'requests:create',
+    'requests:view_own',
+    'templates:manage_group',
+    'inbox:access',
+  ],
   admin: [
     'requests:create',
     'requests:view_own',
@@ -100,18 +106,26 @@ export function isApprover(user: User | null): boolean {
   return user.hasApprovalResponsibility || user.roles.includes('approver');
 }
 
+/** Explicit group-template manager. Inbox stays available even with no assignments. */
+export function isGroupManager(user: User | null): boolean {
+  if (!user || user.status !== 'Active') return false;
+  return user.roles.includes('groupManager');
+}
+
 /** @deprecated Prefer isApprover */
 export function isGroupLeaderOrApprover(user: User | null): boolean {
   return isApprover(user);
 }
 
-/**
- * Sidebar: Management & Approvals (Action Inbox + Templates).
- * Hidden entirely when the user has neither inbox access nor template rights.
- */
+/** Sidebar: Management, shown when the user can manage templates. */
 export function hasManagementSidebarSection(user: User | null): boolean {
-  if (!user) return false;
-  return showActionInboxInSidebar(user) || showTemplatesInSidebar(user);
+  return showTemplatesInSidebar(user);
+}
+
+/** Sidebar: Administration, shown for administrators only. */
+export function showAdministrationInSidebar(user: User | null): boolean {
+  if (!user || user.status !== 'Active') return false;
+  return user.roles.includes('admin');
 }
 
 /** @deprecated Prefer hasManagementSidebarSection */
@@ -119,9 +133,9 @@ export function hasApproverSidebarSection(user: User | null): boolean {
   return hasManagementSidebarSection(user);
 }
 
-/** @deprecated Prefer hasManagementSidebarSection */
+/** @deprecated Prefer showAdministrationInSidebar */
 export function hasAdminSidebarSection(user: User | null): boolean {
-  return hasManagementSidebarSection(user);
+  return showAdministrationInSidebar(user);
 }
 
 /**
@@ -130,10 +144,10 @@ export function hasAdminSidebarSection(user: User | null): boolean {
  */
 export function showActionInboxInSidebar(user: User | null): boolean {
   if (!user || user.status !== 'Active') return false;
-  return isApprover(user);
+  return isApprover(user) || isGroupManager(user);
 }
 
-/** Templates under Management & Approvals for Approvers and Admins. */
+/** Templates under Management for designated approvers and administrators. */
 export function showTemplatesInSidebar(user: User | null): boolean {
   return canManageTemplates(user);
 }
@@ -177,6 +191,8 @@ export function getRoleLabel(role: Role | string): string {
     case 'approver':
     case 'manager': // legacy snapshots
       return 'Approver';
+    case 'groupManager':
+      return 'Group manager';
     case 'admin':
       return 'Admin';
     default:

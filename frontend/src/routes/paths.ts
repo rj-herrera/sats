@@ -10,6 +10,8 @@ export const paths = {
   templates: '/templates',
   templateNew: '/templates/new',
   templateEdit: (id: string) => `/templates/${id}/edit` as const,
+  approverConfiguration: '/admin/approvers',
+  accessManagement: '/admin/access',
 } as const;
 
 export type AppPath =
@@ -19,6 +21,8 @@ export type AppPath =
   | typeof paths.inbox
   | typeof paths.templates
   | typeof paths.templateNew
+  | typeof paths.approverConfiguration
+  | typeof paths.accessManagement
   | `/requests/${string}`
   | `/requests/${string}/edit`
   | `/requests/${string}/review`

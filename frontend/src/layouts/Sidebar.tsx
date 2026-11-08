@@ -6,13 +6,15 @@ import {
   FileStack,
   Inbox,
   Layers,
+  Shield,
+  UserCheck,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { paths } from '@/routes/paths';
 import { devSignOut } from '@/services/accountService';
-import { getPrimaryRoleLabel } from '@/utils/permissions';
+import { userHasRole } from '@/utils/permissions';
 import { getUserInitials } from '@/utils/userDisplay';
 
 interface SidebarProps {
@@ -47,6 +49,42 @@ function isActionInboxSection(pathname: string): boolean {
 function isTemplatesSection(pathname: string): boolean {
   if (pathname === paths.templates || pathname === paths.templateNew) return true;
   return Boolean(matchPath({ path: '/templates/:id/edit', end: true }, pathname));
+}
+
+function NavSection({
+  label,
+  items,
+  pathname,
+  onNavigate,
+  divided,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+  onNavigate?: () => void;
+  divided?: boolean;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div>
+      <div className={divided ? 'mb-2 border-t border-white/10 pt-4' : 'mb-2'}>
+        <p className="px-3 text-xs font-medium uppercase tracking-wide text-brand-300">
+          {label}
+        </p>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {items.map((item) => (
+          <NavItemLink
+            key={item.to}
+            item={item}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function NavItemLink({
@@ -93,7 +131,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     pendingInboxCount,
     showActionInboxInSidebar,
     showTemplatesInSidebar,
-    hasManagementSection,
+    showAdministrationInSidebar,
   } = usePermissions();
 
   const workspaceItems: NavItem[] = [
@@ -111,10 +149,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     },
   ];
 
-  const managementItems: NavItem[] = [];
-
   if (showActionInboxInSidebar) {
-    managementItems.push({
+    workspaceItems.push({
       to: paths.inbox,
       label: 'Action Inbox',
       icon: <Inbox size={18} />,
@@ -123,14 +159,33 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     });
   }
 
-  if (showTemplatesInSidebar) {
-    managementItems.push({
-      to: paths.templates,
-      label: 'Templates',
-      icon: <FileStack size={18} />,
-      isActiveForPath: isTemplatesSection,
-    });
-  }
+  const managementItems: NavItem[] = showTemplatesInSidebar
+    ? [
+        {
+          to: paths.templates,
+          label: userHasRole(user, 'admin') ? 'Template Management' : 'Group Templates',
+          icon: <FileStack size={18} />,
+          isActiveForPath: isTemplatesSection,
+        },
+      ]
+    : [];
+
+  const administrationItems: NavItem[] = showAdministrationInSidebar
+    ? [
+        {
+          to: paths.approverConfiguration,
+          label: 'Approver Configuration',
+          icon: <UserCheck size={18} />,
+          isActiveForPath: (path) => path === paths.approverConfiguration,
+        },
+        {
+          to: paths.accessManagement,
+          label: 'Administrators',
+          icon: <Shield size={18} />,
+          isActiveForPath: (path) => path === paths.accessManagement,
+        },
+      ]
+    : [];
 
   const initials = getUserInitials(user.name);
 
@@ -201,42 +256,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
-          <div>
-            <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-brand-300">
-              My Workspace
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {workspaceItems.map((item) => (
-                <NavItemLink
-                  key={item.to}
-                  item={item}
-                  pathname={pathname}
-                  onNavigate={onClose}
-                />
-              ))}
-            </div>
-          </div>
-
-          {hasManagementSection && managementItems.length > 0 && (
-            <div>
-              <div className="mb-2 border-t border-white/10 pt-4">
-                <p className="px-3 text-xs font-medium uppercase tracking-wide text-brand-300">
-                  Management & Approvals
-                </p>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                {managementItems.map((item) => (
-                  <NavItemLink
-                    key={item.to}
-                    item={item}
-                    pathname={pathname}
-                    onNavigate={onClose}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
+          <NavSection
+            label="My Workspace"
+            items={workspaceItems}
+            pathname={pathname}
+            onNavigate={onClose}
+          />
+          <NavSection
+            label="Management"
+            items={managementItems}
+            pathname={pathname}
+            onNavigate={onClose}
+            divided
+          />
+          <NavSection
+            label="Administration"
+            items={administrationItems}
+            pathname={pathname}
+            onNavigate={onClose}
+            divided
+          />
         </nav>
 
         <div className="relative border-t border-white/10 p-3" ref={accountMenuRef}>
@@ -265,9 +304,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-white">{user.name}</p>
               <p className="truncate text-xs text-brand-300">{user.groupName}</p>
-              <p className="truncate text-xs text-brand-400">
-                {getPrimaryRoleLabel(user)}
-              </p>
             </div>
           </div>
         </div>

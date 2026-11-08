@@ -6,7 +6,7 @@ import {
   isUserAssignedToRequest,
   listUserCompletedDecisions,
 } from '@/utils/assignmentHelpers';
-import { isApprover } from '@/utils/permissions';
+import { isApprover, isGroupManager } from '@/utils/permissions';
 
 export interface InboxPendingItem {
   request: SubmittedRequest;
@@ -87,13 +87,13 @@ export function listCompletedInboxItems(userId: string): InboxCompletedItem[] {
 
 /**
  * Action Inbox access:
- * - Designated Approvers always (even with an empty inbox)
+ * - Designated approvers and group managers always (even with an empty inbox)
  * - Any active user who currently has pending or completed assigned work
  * Admin role alone does not grant access.
  */
 export function canAccessActionInbox(user: User | null): boolean {
   if (!user || user.status !== 'Active') return false;
-  if (isApprover(user)) return true;
+  if (isApprover(user) || isGroupManager(user)) return true;
   return (
     listPendingInboxItems(user.id).length > 0 ||
     listCompletedInboxItems(user.id).length > 0

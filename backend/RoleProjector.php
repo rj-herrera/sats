@@ -7,8 +7,7 @@ namespace App;
 /**
  * Maps stored SATS role codes onto the user shape the frontend already uses.
  * An inactive employee never receives approver or admin authority.
- * Template management is not stored: an approver manages templates for the
- * primary group already present on the employee record.
+ * A designated approver keeps Action Inbox access and manages templates for their primary group.
  */
 final class RoleProjector
 {
@@ -19,6 +18,8 @@ final class RoleProjector
      */
     public static function apply(array $employee, array $roleCodes): array
     {
+        $employee['managedGroupId'] = null;
+
         if (($employee['status'] ?? '') !== 'Active') {
             $employee['roles'] = ['employee'];
             $employee['hasApprovalResponsibility'] = false;
@@ -29,6 +30,10 @@ final class RoleProjector
         $roles = ['employee'];
         if (in_array('APPROVER', $roleCodes, true)) {
             $roles[] = 'approver';
+            $groupId = trim((string) ($employee['groupId'] ?? ''));
+            if ($groupId !== '') {
+                $employee['managedGroupId'] = $groupId;
+            }
         }
         if (in_array('ADMIN', $roleCodes, true)) {
             $roles[] = 'admin';

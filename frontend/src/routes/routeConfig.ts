@@ -38,6 +38,14 @@ export const routeMeta: RouteMeta[] = [
     // Page-level canAccessActionInbox (assignment-aware); not role-only.
   },
   {
+    path: paths.approverConfiguration,
+    title: 'Approver Configuration',
+  },
+  {
+    path: paths.accessManagement,
+    title: 'Administrator Management',
+  },
+  {
     path: paths.templates,
     title: 'Template Management',
     permissions: ['templates:manage_group', 'templates:manage_generic'],
