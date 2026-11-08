@@ -80,7 +80,7 @@ export function MyRequestsPage() {
             <h2 className="mt-4 text-lg font-semibold text-brand-900">No requests yet</h2>
           </div>
         ) : (
-          <>
+          <section className="overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm">
             <RequestFilters
               filters={filters}
               onChange={setFilters}
@@ -89,7 +89,7 @@ export function MyRequestsPage() {
             />
 
             {filtered.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-brand-200 bg-white px-6 py-12 text-center">
+              <div className="border-t border-brand-100 px-6 py-12 text-center">
                 <h2 className="text-lg font-semibold text-brand-900">No matching results</h2>
                 <p className="mx-auto mt-2 max-w-md text-sm text-brand-600">
                   No requests match your current search or filters. Try adjusting your
@@ -106,7 +106,7 @@ export function MyRequestsPage() {
             ) : (
               <RequestList requests={filtered} />
             )}
-          </>
+          </section>
         )}
       </div>
     </PageScroll>

@@ -20,9 +20,8 @@ export function RequestFilters({
   };
 
   return (
-    <section className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
+    <div className="p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-sm font-semibold text-brand-900">Search & filters</h2>
         {showClear ? (
           <button
             type="button"
@@ -34,7 +33,7 @@ export function RequestFilters({
         ) : null}
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block sm:col-span-2">
           <span className="mb-1 block text-xs font-medium text-brand-600">Search</span>
           <input
@@ -64,6 +63,6 @@ export function RequestFilters({
           </select>
         </label>
       </div>
-    </section>
+    </div>
   );
 }

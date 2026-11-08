@@ -116,7 +116,7 @@ export function ProgressTimeline({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-5 text-slate-900">{item.name}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-xs text-slate-500">
                   {item.position || 'Position unavailable'}
                 </p>
                 {thirdLine(item)}
