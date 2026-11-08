@@ -39,6 +39,12 @@ function fieldTypeLabel(type: FormFieldType): string {
   }
 }
 
+function initialExpandedId(fields: FormFieldDefinition[]): string | null {
+  const only = fields.length === 1 ? fields[0] : null;
+  if (only && !only.label.trim()) return only.id;
+  return null;
+}
+
 function emptyField(existingIds: string[]): FormFieldDefinition {
   return {
     id: createFieldId(existingIds),
@@ -107,7 +113,9 @@ export function FormFieldBuilder({
   fieldErrors,
   onChange,
 }: FormFieldBuilderProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(() =>
+    initialExpandedId(fields),
+  );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
@@ -336,6 +344,7 @@ function FieldCard({
               <span className="mb-1 block text-xs font-medium text-brand-600">Label *</span>
               <input
                 value={field.label}
+                autoFocus={!field.label.trim()}
                 onChange={(event) => onPatch({ label: event.target.value })}
                 className={inputClass}
               />
