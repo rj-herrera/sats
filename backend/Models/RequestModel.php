@@ -509,6 +509,91 @@ final class RequestModel
         return $items;
     }
 
+    /**
+     * Drops one file from the current revision while a request is returned.
+     *
+     * @param array<string, mixed> $actor
+     * @return array<string, mixed>
+     */
+    public function removeAttachment(int $id, string $attachmentId, array $actor, int $rowVersion): array
+    {
+        if (preg_match('/^[a-f0-9]{32}$/', $attachmentId) !== 1) {
+            throw new HttpException('File not found.', 404);
+        }
+
+        $store = new AttachmentStore();
+        $pdo = $this->db();
+        $now = $this->now();
+        $removed = null;
+        $pdo->beginTransaction();
+        try {
+            $request = $this->lockRequest($pdo, $id);
+            $employeeId = (string) $actor['id'];
+            $this->assertVisible($pdo, $id, $employeeId);
+            $this->assertRowVersion($request, $rowVersion);
+            if ((string) $request['requester_employee_id'] !== $employeeId) {
+                throw new HttpException('Only the original requester can remove a file from this request.', 403);
+            }
+            if ($request['status'] !== 'Returned') {
+                throw new HttpException('Files can only be removed while the request is returned for revision.', 400);
+            }
+
+            $revision = $this->lockCurrentRevision($pdo, $id, (int) $request['current_revision_number']);
+            $next = [];
+            foreach ($this->decodeList($revision['attachments_json']) as $attachment) {
+                if (!is_array($attachment)) {
+                    continue;
+                }
+                if ((string) ($attachment['id'] ?? '') === $attachmentId) {
+                    $removed = $attachment;
+                    continue;
+                }
+                $next[] = $attachment;
+            }
+            if ($removed === null) {
+                throw new HttpException('File not found.', 404);
+            }
+
+            $updateRevision = $pdo->prepare(
+                'UPDATE request_revisions SET attachments_json = :attachments WHERE id = :id'
+            );
+            $updateRevision->execute([
+                'attachments' => $this->encodeList($next),
+                'id' => (int) $revision['id'],
+            ]);
+            $touch = $pdo->prepare(
+                'UPDATE requests SET updated_at = :updatedAt, row_version = row_version + 1 WHERE id = :id'
+            );
+            $touch->execute(['updatedAt' => $now, 'id' => $id]);
+
+            $stillUsed = false;
+            $scan = $pdo->prepare(
+                'SELECT attachments_json FROM request_revisions WHERE request_id = :requestId'
+            );
+            $scan->execute(['requestId' => $id]);
+            foreach ($scan->fetchAll() as $row) {
+                foreach ($this->decodeList($row['attachments_json']) as $attachment) {
+                    if (is_array($attachment) && (string) ($attachment['id'] ?? '') === $attachmentId) {
+                        $stillUsed = true;
+                        break 2;
+                    }
+                }
+            }
+
+            $pdo->commit();
+            if (!$stillUsed) {
+                $store->deleteSaved($id, [$removed]);
+            }
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        return $this->requirePresented($id);
+    }
+
     /** @return array<string, mixed> */
     public function show(int $id, string $employeeId): array
     {

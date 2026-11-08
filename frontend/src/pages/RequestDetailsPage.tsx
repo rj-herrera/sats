@@ -12,11 +12,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
 import { usePermissions } from '@/hooks/usePermissions';
-import { cancelSubmittedRequest, getRequest } from '@/services/requestApi';
+import {
+  cancelSubmittedRequest,
+  getRequest,
+  removeRequestAttachment,
+} from '@/services/requestApi';
 import type { SubmittedRequest } from '@/types';
 import { formatDateTime } from '@/utils/formatDisplay';
 import { canUserViewRequest } from '@/utils/requestAccess';
-import { canRequesterCancel } from '@/utils/requestOwnership';
+import { canRequesterCancel, canRequesterEditResubmit } from '@/utils/requestOwnership';
 
 export function RequestDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -102,9 +106,7 @@ export function RequestDetailsPage() {
 
   const activity = request.activity ?? [];
   const isOwner = user?.id === request.requesterId;
-  const isReturned = request.status === 'Returned';
   const showCancel = canRequesterCancel(user, request);
-  const showFooterActions = isOwner && isReturned;
 
   const handleConfirmCancel = (reason: string) => {
     if (!user || !request.rowVersion) return;
@@ -153,7 +155,10 @@ export function RequestDetailsPage() {
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
           <div className="min-w-0 space-y-6 lg:col-span-3">
             <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
-              <RequestDetailsHeader request={request} variant="summary" />
+              <div className="flex items-start justify-between gap-3">
+                <RequestDetailsHeader request={request} variant="summary" />
+                <RequesterActions variant="inline" user={user} request={request} />
+              </div>
               <SubmittedFieldValues
                 request={request}
                 fields={fields}
@@ -172,6 +177,22 @@ export function RequestDetailsPage() {
                         }`
                       : null,
                 }}
+                onRemoveAttachment={
+                  canRequesterEditResubmit(user, request)
+                    ? async (attachmentId) => {
+                        if (!request.rowVersion) {
+                          throw new Error('The file could not be removed.');
+                        }
+                        const result = await removeRequestAttachment(
+                          request.id,
+                          attachmentId,
+                          request.rowVersion,
+                        );
+                        if (!result.ok) throw new Error(result.error);
+                        setRequest(result.data);
+                      }
+                    : undefined
+                }
               />
             </section>
             <ActivityTimeline events={activity} />
@@ -187,12 +208,6 @@ export function RequestDetailsPage() {
           </div>
         </div>
       </div>
-
-      {showFooterActions ? (
-        <div className="shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6">
-          <RequesterActions variant="footer" user={user} request={request} />
-        </div>
-      ) : null}
 
       <CancelRequestDialog
         open={cancelOpen}

@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ActivityTimeline } from '@/components/request/ActivityTimeline';
 import { ApprovalProgress } from '@/components/request/ApprovalProgress';
 import { DecisionConfirmationDialog } from '@/components/request/DecisionConfirmationDialog';
-import { RequestStatusBadge } from '@/components/request/RequestStatusBadge';
+import { RequestDetailsHeader } from '@/components/request/RequestDetailsHeader';
 import { ReviewActionPanel } from '@/components/request/ReviewActionPanel';
 import { ReviewerProgress } from '@/components/request/ReviewerProgress';
 import { RevisionHistory } from '@/components/request/RevisionHistory';
@@ -21,7 +21,6 @@ import {
 } from '@/utils/assignmentHelpers';
 import { formatDateTime } from '@/utils/formatDisplay';
 import { canUserOpenReview, canUserTakeAction } from '@/utils/requestAccess';
-import { getRequestDisplayTitle } from '@/utils/requestTitle';
 
 export function ReviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -151,67 +150,26 @@ export function ReviewPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 lg:p-6">
-        <div>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <Link
-              to={paths.inbox}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900"
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            to={paths.inbox}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900"
+          >
+            <ArrowLeft size={16} aria-hidden />
+            Back to Action Inbox
+          </Link>
+
+          {showActionBar ? (
+            <button
+              type="button"
+              disabled={!canAct || submitting}
+              onClick={() => openDialog('return')}
+              title={canAct ? undefined : explainWhyCannotAct(request, user)}
+              className="rounded-md border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-900 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ArrowLeft size={16} aria-hidden />
-              Back to Action Inbox
-            </Link>
-
-            {showActionBar ? (
-              <button
-                type="button"
-                disabled={!canAct || submitting}
-                onClick={() => openDialog('return')}
-                title={canAct ? undefined : explainWhyCannotAct(request, user)}
-                className="rounded-md border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-900 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Return for Revision
-              </button>
-            ) : null}
-          </div>
-
-          <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-slate-900">
-                  {request.requestNumber}
-                </p>
-                <RequestStatusBadge status={request.status} />
-              </div>
-              <h1 className="mt-1 text-xl font-semibold text-brand-900">
-                {getRequestDisplayTitle(request)}
-              </h1>
-            </div>
-
-            <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <dt className="text-xs font-medium text-brand-500">
-                  Requester
-                </dt>
-                <dd className="mt-1 text-sm text-brand-900">{request.requesterName}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-brand-500">
-                  Group
-                </dt>
-                <dd className="mt-1 text-sm text-brand-900">
-                  {request.requesterGroupName ?? '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-brand-500">
-                  Submitted
-                </dt>
-                <dd className="mt-1 text-sm text-brand-900">
-                  {formatDateTime(request.submittedAt)}
-                </dd>
-              </div>
-            </dl>
-          </section>
+              Return for Revision
+            </button>
+          ) : null}
         </div>
 
         {successMessage ? (
@@ -232,20 +190,41 @@ export function ReviewPage() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-          <div className="min-w-0 space-y-6 lg:col-span-2">
-            <SubmittedFieldValues request={request} fields={fields} />
-            <RevisionHistory request={request} />
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
+          <div className="min-w-0 space-y-6 lg:col-span-3">
+            <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+              <RequestDetailsHeader request={request} variant="summary" />
+              <SubmittedFieldValues
+                request={request}
+                fields={fields}
+                embedded
+                layout="sheet"
+                details={{
+                  requesterName: request.requesterName,
+                  groupName: request.requesterGroupName,
+                  submittedAt: request.submittedAt,
+                  revisionLabel:
+                    request.revisionNumber > 1 || request.lastResubmittedAt
+                      ? `Revision ${request.revisionNumber}${
+                          request.lastResubmittedAt
+                            ? ` · last resubmitted ${formatDateTime(request.lastResubmittedAt)}`
+                            : ''
+                        }`
+                      : null,
+                }}
+              />
+            </section>
             <ActivityTimeline events={request.activity ?? []} />
           </div>
 
-          <aside className="min-w-0 lg:col-span-1 lg:sticky lg:top-4">
+          <div className="min-w-0 space-y-6 lg:col-span-1">
             {request.workflowType === 'review_checking' ? (
               <ReviewerProgress reviewers={request.reviewers} />
             ) : (
               <ApprovalProgress steps={request.approvalSteps} />
             )}
-          </aside>
+            <RevisionHistory request={request} />
+          </div>
         </div>
       </div>
 

@@ -23,15 +23,15 @@ export function getStepStatusLabel(status: StepStatus): string {
 export function getRequestStatusBadgeClasses(status: RequestStatus): string {
   switch (status) {
     case 'Pending':
-      return 'bg-amber-50 text-amber-800';
+      return 'border border-amber-200 bg-amber-100 text-amber-800';
     case 'Approved':
-      return 'bg-emerald-50 text-emerald-800';
+      return 'border border-emerald-200 bg-emerald-100 text-emerald-800';
     case 'Rejected':
-      return 'bg-red-50 text-red-800';
+      return 'border border-red-200 bg-red-100 text-red-800';
     case 'Returned':
-      return 'bg-orange-50 text-orange-800';
+      return 'border border-orange-200 bg-orange-100 text-orange-800';
     case 'Cancelled':
-      return 'bg-slate-100 text-slate-700';
+      return 'border border-slate-300 bg-slate-200 text-slate-700';
   }
 }
 
@@ -39,15 +39,15 @@ export function getRequestStatusBadgeClasses(status: RequestStatus): string {
 export function getStepStatusBadgeClasses(status: StepStatus): string {
   switch (status) {
     case 'Waiting':
-      return 'bg-slate-100 text-slate-600 ring-slate-200';
+      return 'border border-slate-300 bg-slate-200 text-slate-700';
     case 'Pending':
-      return 'bg-amber-50 text-amber-800 ring-amber-200';
+      return 'border border-amber-300 bg-amber-100 text-amber-800';
     case 'Approved':
-      return 'bg-emerald-50 text-emerald-800 ring-emerald-200';
+      return 'border border-emerald-300 bg-emerald-100 text-emerald-800';
     case 'Rejected':
-      return 'bg-red-50 text-red-800 ring-red-200';
+      return 'border border-red-300 bg-red-100 text-red-800';
     case 'Returned':
-      return 'bg-orange-50 text-orange-800 ring-orange-200';
+      return 'border border-orange-300 bg-orange-100 text-orange-800';
   }
 }
 

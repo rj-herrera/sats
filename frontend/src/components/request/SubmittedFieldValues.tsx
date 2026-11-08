@@ -1,18 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import {
-  Download,
-  File,
-  FileArchive,
-  FileAudio,
-  FileCode,
-  FileImage,
-  FileJson,
-  FilePlay,
-  FileSpreadsheet,
-  FileText,
-  Presentation,
-  type LucideIcon,
-} from 'lucide-react';
+import { Paperclip, X } from 'lucide-react';
 import type { AttachmentMetadata, FormFieldDefinition, SubmittedRequest } from '@/types';
 import {
   formatDateTime,
@@ -37,6 +24,8 @@ interface SubmittedFieldValuesProps {
   /** Two-column details sheet used on the request details card. */
   layout?: 'list' | 'sheet';
   details?: SheetDetails;
+  /** When set, a returned request's owner can drop a file from the sheet. */
+  onRemoveAttachment?: (attachmentId: string) => Promise<void>;
 }
 
 function attachmentsForField(
@@ -58,75 +47,6 @@ function isDescriptionField(field: FormFieldDefinition): boolean {
   );
 }
 
-function fileIcon(fileName: string, fileType: string) {
-  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
-  const type = fileType.toLowerCase();
-  const has = (values: string[]) => values.includes(ext);
-
-  let Icon: LucideIcon = File;
-  let className = 'text-slate-400';
-
-  if (type.startsWith('image/') || has(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tif', 'tiff', 'heic'])) {
-    Icon = FileImage;
-    className = 'text-sky-600';
-  } else if (type.startsWith('video/') || has(['mp4', 'mov', 'webm', 'mkv', 'avi'])) {
-    Icon = FilePlay;
-    className = 'text-violet-600';
-  } else if (type.startsWith('audio/') || has(['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'])) {
-    Icon = FileAudio;
-    className = 'text-pink-600';
-  } else if (type === 'application/pdf' || ext === 'pdf') {
-    Icon = FileText;
-    className = 'text-red-500';
-  } else if (
-    type.includes('spreadsheet') ||
-    type.includes('excel') ||
-    type === 'text/csv' ||
-    has(['xls', 'xlsx', 'csv', 'ods'])
-  ) {
-    Icon = FileSpreadsheet;
-    className = 'text-emerald-600';
-  } else if (
-    type.includes('presentation') ||
-    type.includes('powerpoint') ||
-    has(['ppt', 'pptx', 'odp'])
-  ) {
-    Icon = Presentation;
-    className = 'text-orange-500';
-  } else if (
-    type.includes('word') ||
-    type.includes('msword') ||
-    type.includes('wordprocessing') ||
-    has(['doc', 'docx', 'odt', 'rtf'])
-  ) {
-    Icon = FileText;
-    className = 'text-blue-600';
-  } else if (type === 'application/json' || ext === 'json') {
-    Icon = FileJson;
-    className = 'text-amber-600';
-  } else if (
-    type.includes('zip') ||
-    type.includes('compressed') ||
-    type.includes('archive') ||
-    has(['zip', 'rar', '7z', 'tar', 'gz'])
-  ) {
-    Icon = FileArchive;
-    className = 'text-amber-700';
-  } else if (
-    type.includes('javascript') ||
-    type === 'application/xml' ||
-    has(['js', 'jsx', 'ts', 'tsx', 'html', 'css', 'py', 'java', 'php', 'xml', 'yml', 'yaml', 'sql'])
-  ) {
-    Icon = FileCode;
-    className = 'text-slate-600';
-  } else if (type.startsWith('text/') || has(['txt', 'md', 'log'])) {
-    Icon = FileText;
-    className = 'text-slate-500';
-  }
-
-  return <Icon size={18} className={className} aria-hidden />;
-}
-
 function Pair({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-baseline gap-x-2">
@@ -143,10 +63,13 @@ export function SubmittedFieldValues({
   embedded = false,
   layout = 'list',
   details,
+  onRemoveAttachment,
 }: SubmittedFieldValuesProps) {
   const [viewerAttachment, setViewerAttachment] =
     useState<AttachmentMetadata | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const sectionClass = embedded
     ? ''
     : 'rounded-lg border border-brand-100 bg-white p-5 shadow-sm';
@@ -300,30 +223,62 @@ export function SubmittedFieldValues({
         {files.length > 0 ? (
           <div className="mt-6 border-t border-slate-200 pt-5">
             <h3 className="text-sm font-semibold text-slate-900">Attachments</h3>
-            <ul className="mt-3 flex flex-wrap gap-3">
-              {files.map(({ id, attachment }) => (
-                <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => setViewerAttachment(attachment)}
-                    className="flex min-w-56 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {files.map(({ id, attachment }) => {
+                const canRemove = Boolean(onRemoveAttachment && attachment.id);
+                return (
+                  <li
+                    key={id}
+                    className="inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-50">
-                      {fileIcon(attachment.fileName, attachment.fileType)}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-slate-900">
+                    <button
+                      type="button"
+                      onClick={() => setViewerAttachment(attachment)}
+                      className="inline-flex min-w-0 items-center gap-1.5 py-1 pl-2.5 pr-2 text-left"
+                    >
+                      <Paperclip size={14} className="shrink-0 text-slate-500" aria-hidden />
+                      <span className="max-w-52 truncate text-sm text-slate-800">
                         {attachment.fileName}
                       </span>
-                      <span className="block text-xs text-slate-500">
-                        {formatFileSize(attachment.fileSize)}
-                      </span>
-                    </span>
-                    <Download size={16} className="ml-2 shrink-0 text-slate-400" aria-hidden />
-                  </button>
-                </li>
-              ))}
+                    </button>
+                    {canRemove ? (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${attachment.fileName}`}
+                        disabled={removingId === attachment.id}
+                        onClick={() => {
+                          if (!attachment.id || !onRemoveAttachment) return;
+                          setRemoveError(null);
+                          setRemovingId(attachment.id);
+                          void onRemoveAttachment(attachment.id)
+                            .then(() => {
+                              setViewerAttachment((current) =>
+                                current?.id === attachment.id ? null : current,
+                              );
+                            })
+                            .catch((error: unknown) => {
+                              setRemoveError(
+                                error instanceof Error
+                                  ? error.message
+                                  : 'The file could not be removed.',
+                              );
+                            })
+                            .finally(() => setRemovingId(null));
+                        }}
+                        className="mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-50"
+                      >
+                        <X size={14} aria-hidden />
+                      </button>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
+            {removeError ? (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {removeError}
+              </p>
+            ) : null}
           </div>
         ) : null}
         {viewer}

@@ -57,7 +57,7 @@ function thirdLine(item: ProgressTimelineItem) {
   if (item.actionAt) return null;
   if (item.status === 'Pending') {
     return (
-      <span className="mt-1 inline-flex w-fit rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+      <span className="mt-1 inline-flex w-fit rounded-full border border-blue-300 bg-blue-200 px-2 py-0.5 text-xs font-medium text-blue-800">
         In progress
       </span>
     );

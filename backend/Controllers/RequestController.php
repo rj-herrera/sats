@@ -123,6 +123,18 @@ final class RequestController
         ));
     }
 
+    public function removeAttachment(int $id, string $attachmentId): void
+    {
+        $user = $this->actor->requireActive();
+        $input = read_json_body();
+        json_response($this->requests->removeAttachment(
+            $id,
+            $attachmentId,
+            $user,
+            $this->rowVersionFrom($input),
+        ));
+    }
+
     public function download(int $id, string $attachmentId): void
     {
         $user = $this->actor->requireActive();

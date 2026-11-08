@@ -111,6 +111,15 @@ final class Router
             return;
         }
 
+        if (preg_match('#^/requests/(\d+)/attachments/([a-f0-9]{32})/remove$#', $path, $matches) === 1) {
+            if ($method === 'POST') {
+                $this->requests->removeAttachment((int) $matches[1], $matches[2]);
+                return;
+            }
+            json_response(['error' => 'Method not allowed.'], 405);
+            return;
+        }
+
         if (preg_match('#^/requests/(\d+)/attachments/([a-f0-9]{32})$#', $path, $matches) === 1) {
             if ($method === 'GET') {
                 $this->requests->download((int) $matches[1], $matches[2]);

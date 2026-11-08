@@ -6,8 +6,8 @@ import { canRequesterEditResubmit } from '@/utils/requestOwnership';
 interface RequesterActionsProps {
   user: User | null;
   request: SubmittedRequest;
-  /** Footer layout matches Review page sticky action bar */
-  variant?: 'card' | 'footer';
+  /** inline sits inside the request details card. footer is the sticky action bar. */
+  variant?: 'card' | 'footer' | 'inline';
 }
 
 export function RequesterActions({
@@ -28,9 +28,17 @@ export function RequesterActions({
     </Link>
   );
 
-  if (variant === 'footer') {
+  if (variant === 'footer' || variant === 'inline') {
     return (
-      <div className="flex flex-wrap items-center justify-end gap-2">{editLink}</div>
+      <div
+        className={
+          variant === 'inline'
+            ? 'flex shrink-0 flex-wrap items-center justify-end gap-2'
+            : 'flex flex-wrap items-center justify-end gap-2'
+        }
+      >
+        {editLink}
+      </div>
     );
   }
 

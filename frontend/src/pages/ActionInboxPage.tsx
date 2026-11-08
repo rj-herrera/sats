@@ -146,38 +146,6 @@ export function ActionInboxPage() {
           </button>
         </div>
 
-        <section className="rounded-lg border border-brand-100 bg-white p-4 shadow-sm">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="block sm:col-span-2">
-              <span className="mb-1 block text-xs font-medium text-brand-600">Search</span>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Number, title, template, or requester…"
-                className="w-full rounded-md border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-brand-600">Status</span>
-              <select
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as RequestStatus | 'all')
-                }
-                className="w-full rounded-md border border-brand-200 py-2 pr-10 pl-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-              >
-                <option value="all">All statuses</option>
-                {REQUEST_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-
         {sourceCount === 0 ? (
           <div className="rounded-lg border border-dashed border-brand-200 bg-white px-6 py-14 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
@@ -187,27 +155,78 @@ export function ActionInboxPage() {
               {tab === 'pending' ? 'No assigned requests' : 'No completed actions yet'}
             </h2>
           </div>
-        ) : activeItems.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-brand-200 bg-white px-6 py-12 text-center">
-            <h2 className="text-lg font-semibold text-brand-900">No matching results</h2>
-            <p className="mt-2 text-sm text-brand-600">
-              Try adjusting your search or status filter.
-            </p>
-            <button
-              type="button"
-              className="mt-4 text-sm font-medium text-brand-800 hover:underline"
-              onClick={() => {
-                setSearch('');
-                setStatusFilter('all');
-              }}
-            >
-              Clear filters
-            </button>
-          </div>
-        ) : tab === 'pending' ? (
-          <AssignedRequestList mode="pending" items={filteredPending} />
         ) : (
-          <AssignedRequestList mode="completed" items={filteredCompleted} />
+          <section className="overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm">
+            <div className="p-4">
+              {search.trim() || statusFilter !== 'all' ? (
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch('');
+                      setStatusFilter('all');
+                    }}
+                    className="text-sm font-medium text-brand-700 hover:text-brand-900"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block text-xs font-medium text-brand-600">Search</span>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Number, title, template, or requester…"
+                    className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm text-brand-900 placeholder:text-brand-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-brand-600">Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(e.target.value as RequestStatus | 'all')
+                    }
+                    className="w-full rounded-md border border-brand-200 bg-white py-2 pr-10 pl-3 text-sm text-brand-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  >
+                    <option value="all">All statuses</option>
+                    {REQUEST_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {activeItems.length === 0 ? (
+              <div className="border-t border-brand-100 px-6 py-12 text-center">
+                <h2 className="text-lg font-semibold text-brand-900">No matching results</h2>
+                <p className="mx-auto mt-2 max-w-md text-sm text-brand-600">
+                  No requests match your current search or filters. Try adjusting your
+                  criteria.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setStatusFilter('all');
+                  }}
+                  className="mt-5 rounded-md border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : tab === 'pending' ? (
+              <AssignedRequestList mode="pending" items={filteredPending} />
+            ) : (
+              <AssignedRequestList mode="completed" items={filteredCompleted} />
+            )}
+          </section>
         )}
       </div>
     </PageScroll>

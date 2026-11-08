@@ -40,7 +40,7 @@ export function StepStatusBadge({
   return (
     <span
       title={tooltip}
-      className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${getStepStatusBadgeClasses(status)}`}
+      className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStepStatusBadgeClasses(status)}`}
     >
       {label}
     </span>

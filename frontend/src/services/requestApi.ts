@@ -192,6 +192,18 @@ export function submitDecision(
   return mutate(`/requests/${id}/decisions`, body, 'The decision could not be saved.');
 }
 
+export function removeRequestAttachment(
+  id: string,
+  attachmentId: string,
+  rowVersion: number,
+): Promise<ApiResult<SubmittedRequest>> {
+  return mutate(
+    `/requests/${id}/attachments/${attachmentId}/remove`,
+    { rowVersion },
+    'The file could not be removed.',
+  );
+}
+
 export function resubmitSubmittedRequest(
   id: string,
   body: {
