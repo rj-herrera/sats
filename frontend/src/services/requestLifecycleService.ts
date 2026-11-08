@@ -167,7 +167,9 @@ export function resubmitRequest(input: ResubmitRequestInput): LifecycleResult {
 }
 
 /**
- * Cancel a Pending request. Permanent for this MVP.
+ * Cancel a Pending or Returned request. Permanent for this MVP.
+ * A returned revision keeps its Returned outcome; cancellation is recorded
+ * on the request, matching the API.
  */
 export function cancelRequest(input: CancelRequestInput): LifecycleResult {
   const request = getRequestById(input.requestId);
@@ -197,11 +199,10 @@ export function cancelRequest(input: CancelRequestInput): LifecycleResult {
   const timestamp = input.timestamp ?? new Date().toISOString();
   const reason = input.reason?.trim() || null;
 
-  // Freeze the open revision for audit (mirrors resubmit archival).
-  const closed = snapshotClosedRevision({
-    ...request,
-    status: 'Cancelled',
-  });
+  // Pending revisions close as Cancelled. A returned revision stays Returned.
+  const closed = snapshotClosedRevision(
+    request.status === 'Pending' ? { ...request, status: 'Cancelled' } : request,
+  );
 
   const next: SubmittedRequest = {
     ...request,

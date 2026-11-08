@@ -1,132 +1,149 @@
 # SATS Current Status Report
 
-SATS (Submission and Approval Tracking System) is an internal request-and-approval app. The screens you use are a React app. People and groups come from the company databases through a PHP API. Templates and requests that you create in the browser are still saved only in that browser, not in MySQL. A separate PHP API already implements templates and the full request lifecycle in MySQL, but the React pages do not call it yet.
+Date: 8 November 2026
 
-This report follows the code as of November 2026. Early docs under `docs/` (`ARCHITECTURE.md`, `REQUIREMENTS.md`, `FRONTEND.md`, and the October 2026 assessments) describe an older plan and are not the current system.
+SATS (Submission and Approval Tracking System) is an internal request-and-approval app. The screens are a React app. Identity, people, groups, templates, requests, files, and role assignments are stored through a plain PHP JSON API and MySQL. The browser no longer keeps templates or requests in localStorage.
+
+Older files in `docs/` (`ARCHITECTURE.md`, `REQUIREMENTS.md`, `FRONTEND.md`, and the October 2026 assessments) describe an earlier plan: server-rendered PHP, or a React demo that saved everything in the browser. They are not the current system. This report follows the code.
 
 ## Current status
 
-The product story works in the browser: pick a template, fill a form, submit, review or approve, return, revise, resubmit, cancel, and read history. Sign-in is real. Persistence of templates and requests is not.
+A signed-in employee can create a request from an active template, attach files, and send it through one of two workflows. An assigned person can approve, reject, or return it. The owner can revise a returned request or cancel a pending one. Approvers manage templates for their own group. Administrators manage every template, designate approvers, and designate other administrators.
 
-| Layer | What it does today | Where data lives |
+| Layer | What it does | Where data lives |
 |---|---|---|
-| React UI (`frontend/`) | All screens: My Requests, New Request, details, edit, inbox, review, template management | Templates and requests in `localStorage` |
-| Directory API | Who you are, groups, employees, SATS roles | Company MySQL plus the `sats` role tables |
-| Template and request API | Create, update, submit, decide, resubmit, cancel | `sats` MySQL, with transactions |
-| Wiring | The UI calls `/me`, `/groups`, `/employees`, and the test sign-in routes only | Request and template screens never call `/requests` or `/templates` |
+| React UI (`frontend/`) | My Requests, New Request, details, edit, inbox, review, templates, approver configuration, administrators | Reads and writes the PHP API |
+| Directory API | Current user, groups, employees | Company MySQL (`employee_list`, `group_list`, `employee_group`) |
+| SATS API | Templates, requests, decisions, files, role assignments | `sats` MySQL, plus files on disk |
+| Sign-in | Portal cookie `userID` | Portal login database (`kdtlogin.fldUserHash`) |
 
-Not built: notifications, My Profile, User Management, Group Management, System Settings, email, file storage, and a real SATS login page. The header language switcher is gone. The UI is English only.
+Not built: in-app notifications, My Profile, a SATS username form, email or SMS, Group Management as its own screen, and System Settings. The UI is English only.
+
+Leftover browser modules still exist and are used by older unit tests: `requestRepository`, `templateRepository`, `decisionService`, `requestLifecycleService`, and `inboxService`. Live pages do not call them. They still describe an older localStorage workflow, including a cancel rule that only the tests use.
 
 ## How the app is put together
 
-The browser app is React 19, React Router 7, TypeScript, Tailwind CSS 4, and Vite 7. It runs at `http://localhost:5173/` with `base: '/'`. API calls go to `http://localhost/sats/api` (override with `VITE_API_BASE`) and send cookies.
+The browser app is React 19, React Router 7, TypeScript, Tailwind CSS 4, and Vite 7. Development runs at `http://localhost:5173/` with `base: '/'`. API calls go to `http://localhost/sats/api` unless `VITE_API_BASE` is set. Requests send cookies (`credentials: 'include'`).
 
-The API is plain PHP with no framework. `api/index.php` builds the controllers and `backend/Router.php` maps the path. JSON in, JSON out. CORS allows only `localhost:5173` and `127.0.0.1:5173`.
+The API is plain PHP with no framework and no Composer app. `api/index.php` builds the controllers. `backend/Router.php` maps the path. Responses are JSON. CORS allows only `http://localhost:5173` and `http://127.0.0.1:5173`. SQL uses PDO prepared statements. Template saves, request decisions, resubmits, cancels, and role changes run inside a database transaction and lock the row they change.
 
-Three MySQL databases, configured in `.env`:
+Three MySQL databases, from `.env`:
 
-- **Directory** (`DB_NAME`, typically `kdtphdb_new`): read-only `employee_list`, `group_list`, `employee_group`.
-- **Portal login** (`LOGIN_DB_NAME`, typically `kdtphdb`): the `userID` cookie is matched to `kdtlogin.fldUserHash`.
-- **SATS** (`SATS_DB_NAME`, typically `sats`): roles, templates, and requests. Scripts are `database/sats_roles.sql`, `sats_templates.sql`, and `sats_requests.sql`.
+- **Directory** (`DB_NAME`, typically `kdtphdb_new`): read-only employees and groups.
+- **Portal login** (`LOGIN_DB_NAME`, typically `kdtphdb`): the `userID` cookie is matched to the portal user hash.
+- **SATS** (`SATS_DB_NAME`, typically `sats`): roles, templates, and requests. Scripts are `database/sats_roles.sql`, `database/sats_templates.sql`, and `database/sats_requests.sql`.
 
-There is no Composer app and no ORM. SQL uses PDO prepared statements. Critical request and template writes run inside a database transaction and use row locks.
+Uploaded files are stored under `storage/attachments/{requestId}/`, outside the public web root. Download goes through an authorized API route. The database stores the file name, size, type, and stored name, not the bytes.
 
 ## Sign-in and roles
 
-There is no SATS username form. On load, the app calls `GET /me`. PHP reads the `userID` cookie, looks up the portal hash, loads the employee, and refuses inactive employees. If the cookie is missing, the UI shows "Sign in required" and a link to `http://localhost/KDTPortalLogin/`.
+There is no SATS login form. On load the app calls `GET /me`. PHP reads the `userID` cookie, resolves the employee, and refuses an inactive employee. If the cookie is missing, the UI shows "Sign in required" and links to `http://localhost/KDTPortalLogin/`.
 
-A local testing sign-in exists. It is off unless `SATS_DEV_LOGIN=1`, and it only answers from localhost. `POST /dev/sign-in` with an employee id writes the same portal cookie. The sidebar has a matching test sign-out. Comments in the code mark this as temporary.
+A local testing sign-in exists. It answers only when `SATS_DEV_LOGIN=1` and the caller is localhost. `POST /dev/sign-in` with an employee id writes the same portal cookie. The sidebar account menu has a matching "Log out" marked "Testing only".
 
-After sign-in, the app loads every group and employee into an in-memory directory. Later screens look people up from that memory. Unit tests still use sample users when that directory was not installed.
+After sign-in, the app loads groups and employees into an in-memory directory. Template and reviewer pickers read that directory. The signed-in user is refreshed when the window gains focus.
 
 Everyone is an employee. Extra authority comes from `sats_role_assignments`:
 
 | Stored code | App role | What they can do |
 |---|---|---|
-| none | employee | Create requests and see their own |
-| `APPROVER` | approver | Action Inbox, decide on assignments, manage templates owned by their primary group |
-| `ADMIN` | admin | Manage every template, including generic ones |
+| none | employee | Create requests and see their own. Action Inbox appears only if they already have assigned work. |
+| `APPROVER` | approver | Action Inbox, decide on assignments, and manage templates owned by their primary group |
+| `ADMIN` | admin | Manage every template, including generic ones. Open Approver Configuration and Administrators. Admin alone does not open the inbox. |
 
-Admin alone does not open the inbox. An approver's template rights are their primary group on the employee record. Job title is not a permission. Inactive employees stay employees with no approver or admin power.
+Roles stack. An approver who is also an admin keeps both. Inactive employees stay employees with no approver or admin power. Job title is not a permission.
+
+`GROUP_MANAGER` is still in the role catalogue and in `RoleModel::managedGroupIdsByEmployee()`, but nothing calls that method, the role projector does not turn it into an app role, and no screen grants it. Group template management now comes from the `APPROVER` role and the employee's primary group.
 
 Sidebar:
 
-- Everyone: New Request, My Requests.
-- Approvers: Action Inbox, with a badge for items they can act on now.
-- Approvers and admins: Templates.
-- Unknown routes inside the shell show a 404. `/login` and `/` redirect to My Requests. A page the role cannot open redirects to My Requests.
+- **My Workspace** (everyone): New Request, My Requests. Action Inbox when the user is an approver, still has the unused `groupManager` flag, or already has assigned work. The badge counts items they can act on now.
+- **Management** (approvers and admins): "Group Templates" for an approver, "Template Management" for an admin.
+- **Administration** (admins only): Approver Configuration, Administrators.
+- `/` and `/login` redirect to My Requests. A page the role cannot open redirects to My Requests. Unknown routes inside the shell show a 404.
 
 ## Screens and how they work
 
-**My Requests** lists requests whose requester id is the signed-in user, from `localStorage`. Filters cover search and status. Opening a row goes to details.
+**My Requests** loads `GET /requests?view=mine`. Filters cover search and status. Opening a row goes to details.
 
-**New Request** lists Active templates the user's group may use. Choosing one builds the form from that template's fields. Two workflows:
+**New Request** loads Active templates the user's group may use (`GET /templates?view=available`). Choosing one builds the form from that template's fields. Two workflows:
 
-- **Review / Checking** (`review_checking`): the requester picks one or more reviewers. They all become Pending at once. The request is Approved only when every reviewer approves. Any reject ends it as Rejected. Any return sets Returned.
-- **Hierarchy Approval** (`hierarchy_approval`): steps and assignees are fixed on the template. Step 1 is Pending. Later steps are Waiting. Approving a step makes the next Waiting step Pending. The last approval sets Approved. Reject and return stop the chain the same way as review.
+- **Review / Checking** (`review_checking`): the requester picks one or more people. They all become Pending at once. The request is Approved only when every one of them approves. Any reject ends it as Rejected. Any return sets Returned. A generic template can pick any active employee except the requester. A group template can pick designated approvers. The picker is one row per person: choose a group, then a person, and add another row for the next person.
+- **Hierarchy Approval** (`hierarchy_approval`): steps and assignees are fixed on the template. Assignees may come from any group. Step 1 is Pending. Later steps are Waiting. Approving a step makes the next Waiting step Pending. The last approval sets Approved. Reject and return stop the chain.
 
-The form checks required fields, types, and reviewer selection in the browser, then writes the request to `localStorage`. The request number looks like `SATS-2026-000001`. Field definitions, reviewers, and steps are copied onto the request so later template edits do not rewrite it. A confirmation screen shows the number.
+The browser checks required fields, types, and reviewer selection, then `POST /requests`. If files are attached, the same route receives multipart form data (`payload` JSON plus `files[fieldId][]`). The server copies the current template version, field definitions, values, and assignments onto the request, so a later template edit does not rewrite it. The request number is `SATS-{year}-{6 digits}` using the Asia/Manila year. Success shows a toast and returns to My Requests.
 
-**Request Details** shows the snapshot fields, status, approval progress, activity timeline, and past revisions. The owner can cancel while status is Pending. If status is Returned, they can open Edit & Resubmit. Someone else sees the request only if they are assigned on it. Admin does not get a blanket view.
+**Request Details** loads `GET /requests/{id}`. It shows the snapshotted fields, files, status, approval progress, activity, and past revisions. A request is visible only to its requester or to someone assigned on any revision. Others get "not found". Admin does not get a blanket view. The owner can cancel while status is Pending. If status is Returned, the owner can open Edit & Resubmit. An assignee who opens details is sent to the inbox instead of staying on the owner page.
 
-**Edit & Resubmit** is only for the owner, and only when status is Returned. At least one answer must change. Save archives the closed revision, increments the revision number, sets status back to Pending, and restarts the workflow: all reviewers Pending again, or hierarchy back to step 1 Pending and the rest Waiting. Older decisions stay in revision history.
+**Edit & Resubmit** is only for the owner, and only when status is Returned. At least one answer must change. New files can be added and kept files can be dropped. Save opens the next revision, sets status back to Pending, and restarts the workflow: all reviewers Pending again, or hierarchy back to step 1 Pending and the rest Waiting. Older decisions stay in revision history. The route is `POST /requests/{id}/resubmit`.
 
-**Action Inbox** has Assigned to Me and Completed. Pending requests the user is assigned to appear under Assigned, including hierarchy steps that are still Waiting. Waiting steps are visible but not actionable. The badge counts only Pending assignments. Completed lists the user's latest decision and hides anything still waiting on them. A non-approver can still open the inbox if they already have assigned work.
+**Action Inbox** has Assigned to Me (`view=inbox`) and Completed (`view=completed`). Pending requests the user is assigned to appear under Assigned, including hierarchy steps that are still Waiting. Waiting steps are visible but not actionable (`canAct` is false). Completed lists the user's latest decision and hides anything still waiting on them.
 
-**Review / Approval** is the decision page. Approve, Reject, or Return. Reject and Return require a comment. Approve's comment is optional. Only a Pending assignment on a Pending request can be decided. The result is written in `localStorage` and an activity event is appended.
+**Review / Approval** records Approve, Reject, or Return through `POST /requests/{id}/decisions`. Reject and Return require a comment. Approve's comment is optional. A confirmation dialog is shown before the decision is sent. Only a Pending assignment on a Pending request can be decided. The server locks the request row and checks `rowVersion`, so a stale screen cannot overwrite a newer change.
 
-**Templates** is a list of templates the user may manage, with activate and deactivate. The editor is four steps: Basic Information, Form Fields, Approval Workflow, Preview & Publish. There is no Draft status. A template is Active or Inactive. Activation requires a description, at least one field, and a valid workflow. Approvers are forced to group scope and their own group. Admins can create generic templates (empty allowed-groups means all groups) or group templates and can edit any template. Field types: text, textarea, number, PHP/USD/JPY currency, URL, date, select, radio, checkbox, and file.
+**Templates** lists templates the user may manage (`view=manageable`), with activate and deactivate. The editor is four steps: Basic Information, Form Fields, Approval Workflow, Preview & Publish. There is no Draft status. A template is Active or Inactive. Activation requires a description, at least one field, and a valid workflow. A new template starts with one blank text field, and that field opens expanded so the label can be typed immediately. Fields added with Add Field also open. Existing fields on a saved template stay collapsed until opened. Approvers are forced to group scope and their own primary group. Admins can create generic templates or group templates and can edit any template. For a generic template, an empty allowed-group list means all groups; the admin can also limit it to selected groups. Each content change stores a new immutable `template_versions` row. A status-only change does not. The client must send the current `version` or the save returns 409.
 
-**Reset sample data** in the sidebar clears template and request `localStorage`. It does not change the company directory.
+Field types: text, textarea, number, PHP/USD/JPY currency, URL, date, select, radio, checkbox, and file. File rules are fixed, not chosen by the template author: up to 5 files per field, 20 MB each, types pdf, doc, docx, xls, xlsx, ppt, pptx, csv, txt, png, jpg, jpeg. The owner can remove a file from the current revision with `POST /requests/{id}/attachments/{attachmentId}/remove`. Download is `GET /requests/{id}/attachments/{attachmentId}` after the same visibility check.
 
-## What the PHP API already does
+**Approver Configuration** (admin only) lists active `APPROVER` assignments, grouped by the employee's primary group. An admin can add an active employee or deactivate an existing approver. Deactivate sets `is_active` to 0. It does not delete the row. The change is written to `sats_access_audit`.
 
-These routes exist and enforce rules on the server. The React pages do not use the template or request ones yet.
+**Administrators** (admin only) lists active `ADMIN` assignments. An admin can add another administrator or deactivate one. The server refuses to deactivate the last active administrator.
 
-Directory, used by the UI:
+Success and failure of these actions use a small toast, not a separate notification inbox.
 
-- `GET /me`, `GET /groups`, `GET /groups/{id}`, `GET /employees`, `GET /employees?groupId=`, `GET /employees/{id}`
+## API routes
+
+Directory, used at sign-in:
+
+- `GET /me`
+- `GET /groups`, `GET /groups/{id}`
+- `GET /employees`, `GET /employees?groupId=`, `GET /employees/{id}`
 - `POST /dev/sign-in`, `POST /dev/sign-out` (localhost testing only)
 
-Templates, MySQL, not used by the screens:
+Templates:
 
-- `GET /templates?view=available` — Active templates for the caller's group.
-- `GET /templates?view=manageable` — all templates for an admin; an approver's own-group templates otherwise.
-- `GET /templates/{id}`, `POST /templates`, `PUT /templates/{id}`.
-- Each content change stores a new immutable `template_versions` row. Status-only changes do not. `version` must match or the save returns 409.
-- Allowed groups live in `template_allowed_groups`.
+- `GET /templates?view=available`
+- `GET /templates?view=manageable`
+- `GET /templates/{id}`
+- `POST /templates`
+- `PUT /templates/{id}`
 
-Requests, MySQL, not used by the screens:
+Requests:
 
-- `GET /requests?view=mine|inbox|completed`, `GET /requests/{id}`
-- `POST /requests`, `POST /requests/{id}/decisions`, `POST /requests/{id}/resubmit`, `POST /requests/{id}/cancel`
-- A request is visible only to its requester or to someone assigned on any revision. Others get 404.
-- Creates copy the current template version, field definitions, values, and assignments. The number is `SATS-{year}-{6 digits}` using the Asia/Manila year, from `request_number_sequences`.
-- Decisions lock the request row, check `rowVersion`, require status Pending, and require the caller's assignment to be Pending. A Waiting step returns an error. Approve on review waits until no Pending reviewers remain. Approve on hierarchy promotes the next Waiting step. Reject and return close the revision. A comment is required for reject and return.
-- Resubmit is owner-only, status Returned, and at least one non-file answer must change. It opens the next revision and copies assignments, resetting hierarchy to step 1.
-- Cancel is owner-only. The API allows Pending or Returned. The browser only allows Pending. That is a real difference.
-- Each mutation bumps `row_version`. A stale client gets a conflict instead of overwriting someone else.
+- `GET /requests?view=mine|inbox|completed`
+- `GET /requests/{id}`
+- `POST /requests`
+- `POST /requests/{id}/decisions`
+- `POST /requests/{id}/resubmit`
+- `POST /requests/{id}/cancel`
+- `GET /requests/{id}/attachments/{attachmentId}`
+- `POST /requests/{id}/attachments/{attachmentId}/remove`
 
-Tables: `templates`, `template_versions`, `template_allowed_groups`, `requests`, `request_revisions`, `request_approval_assignments`, `approval_decisions`, `request_activity`, `request_number_sequences`, `sats_roles`, `sats_role_assignments`. Status values are Pending, Approved, Rejected, Returned, and Cancelled. Assignment statuses add Waiting.
+Administration (admin only):
 
-## Rules that match on both sides
+- `GET /admin/approvers`, `POST /admin/approvers`, `PATCH /admin/approvers/{employeeId}`
+- `GET /admin/access`, `POST /admin/access`, `PATCH /admin/access/{employeeId}/ADMIN`
+
+## Workflow rules
+
+Statuses are Pending, Approved, Rejected, Returned, and Cancelled. Assignment statuses add Waiting.
 
 - Review is parallel and unanimous. Hierarchy is one active step at a time and cannot be skipped.
-- Reject is terminal. Return sends the request back. Resubmit starts a new round from the beginning and keeps history.
+- A decision is allowed only while the request is Pending and the caller's assignment is Pending. A Waiting step returns an error.
+- Reject is terminal. Return sends the request back to the owner and closes that revision.
+- Resubmit is owner-only, status Returned, and at least one non-file answer must change. It starts a new round from the beginning and keeps history.
+- The details screen offers Cancel only while status is Pending, and only to the owner. The API also accepts Cancel from Returned. That difference is real: the screen is stricter than the server.
 - Approved, Rejected, and Cancelled do not accept new decisions.
-- Only the original requester can resubmit or cancel.
-- Field values are checked against the snapshotted definitions (required, type, options, length, min and max, URL).
+- Field values are checked against the snapshotted definitions (required, type, options, length, min and max, URL). File fields are checked by the attachment store, not as text values.
+- Each mutation bumps `row_version`.
+
+Tables: `templates`, `template_versions`, `template_allowed_groups`, `requests`, `request_revisions`, `request_approval_assignments`, `approval_decisions`, `request_activity`, `request_number_sequences`, `sats_roles`, `sats_role_assignments`, `sats_access_audit`.
 
 ## Known gaps
 
-- **Split brain.** A template or request saved in the UI is not in MySQL. A row created through the API does not appear in the UI.
-- **File fields.** The form can attach files and store name, size, and type in `localStorage`. The API rejects any attachment and any required file field with "File uploads are not available yet." Nothing is stored outside the web root.
-- **Cancel rule.** Browser: Pending only. API: Pending or Returned.
-- **Authorization of decisions.** In the browser it is JavaScript. The API is the one that locks rows and checks the actor.
-- **No notifications, profile, user admin, group admin, or system settings.**
-- **Directory reads are broad.** Group and employee list endpoints are not limited to the caller's group.
-- **Outdated docs.** Do not treat `docs/ARCHITECTURE.md`, `docs/REQUIREMENTS.md`, or the October assessments as the live design.
-
-## Practical reading for another model
-
-Treat the React services `requestRepository`, `templateRepository`, `decisionService`, `requestLifecycleService`, and `inboxService` as the behavior users see. Treat `backend/Controllers/*`, `backend/Models/RequestModel.php`, `backend/Models/TemplateModel.php`, and `backend/RequestFields.php` as the server behavior that is implemented in code but not connected to those screens. The next integration step is to point the React repositories at `/templates` and `/requests` and stop using `localStorage` for those two domains.
+- **No notifications, profile, group-admin screen, or system settings.**
+- **Directory list endpoints are broad.** Any signed-in user who can reach them receives the group and employee lists. The screens need that directory for pickers.
+- **`GROUP_MANAGER` is unused.** The catalogue and a query method remain. Live group-template rights come from `APPROVER` plus the primary group.
+- **Cancel mismatch.** The screen allows Pending only. The API allows Pending or Returned.
+- **Old localStorage services and their tests remain.** They are not what the screens run. Do not treat them as the live workflow.
+- **Early docs in `docs/` are stale**, except this report.

@@ -191,14 +191,19 @@ describe('requestLifecycleService', () => {
     expect(result.request.cancellationReason).toBe('No longer needed');
   });
 
-  it('blocks cancel when Returned', () => {
+  it('cancels a Returned request and keeps the revision outcome', () => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify([returnedRequest()]));
     const result = cancelRequest({
       requestId: 'req-life-1',
       actorUserId: 'usr-employee-1',
       reason: 'No longer needed',
     });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.request.status).toBe('Cancelled');
+    expect(result.request.revisions).toHaveLength(1);
+    expect(result.request.revisions[0].outcome).toBe('Returned');
+    expect(result.request.cancellationReason).toBe('No longer needed');
   });
 
   it('blocks non-owners from cancelling', () => {

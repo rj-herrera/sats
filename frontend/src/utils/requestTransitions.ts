@@ -28,7 +28,7 @@ export function canResubmitFrom(status: RequestStatus): boolean {
 
 /** Whether the requester may cancel. */
 export function canCancelFrom(status: RequestStatus): boolean {
-  return status === 'Pending';
+  return status === 'Pending' || status === 'Returned';
 }
 
 /**
@@ -55,7 +55,7 @@ export function explainInvalidTransition(
       if (from === 'Pending') return null;
       return `Cannot move from ${from} to ${to}.`;
     case 'Cancelled':
-      if (from === 'Pending') return null;
+      if (from === 'Pending' || from === 'Returned') return null;
       return `Cannot move from ${from} to Cancelled.`;
     default:
       return `Unsupported status transition ${from} → ${to}.`;

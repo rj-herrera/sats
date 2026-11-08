@@ -59,12 +59,12 @@ describe('requestOwnership', () => {
     ).toBe(false);
   });
 
-  it('allows cancel for Pending owners only', () => {
+  it('allows cancel for Pending and Returned owners', () => {
     expect(canRequesterCancel(employee1, baseRequest({ status: 'Pending' }))).toBe(
       true,
     );
     expect(canRequesterCancel(employee1, baseRequest({ status: 'Returned' }))).toBe(
-      false,
+      true,
     );
     expect(canRequesterCancel(employee1, baseRequest({ status: 'Approved' }))).toBe(
       false,

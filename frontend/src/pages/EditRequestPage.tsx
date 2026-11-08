@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, Info } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { CancelRequestDialog } from '@/components/request/CancelRequestDialog';
 import { DynamicRequestForm } from '@/components/request/DynamicRequestForm';
 import { RequestFormActions } from '@/components/request/RequestFormActions';
 import { RequestStatusBadge } from '@/components/request/RequestStatusBadge';
@@ -8,7 +9,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
-import { getRequest, resubmitSubmittedRequest } from '@/services/requestApi';
+import {
+  cancelSubmittedRequest,
+  getRequest,
+  resubmitSubmittedRequest,
+} from '@/services/requestApi';
 import type { FieldValue, SubmittedRequest } from '@/types';
 import { getUserById } from '@/services/userRepository';
 import { canRequesterEditResubmit } from '@/utils/requestOwnership';
@@ -34,6 +39,9 @@ export function EditRequestPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const assigneeListRef = useRef<HTMLUListElement>(null);
   const [assigneeListMaxHeight, setAssigneeListMaxHeight] = useState<number>();
 
@@ -222,6 +230,29 @@ export function EditRequestPage() {
     navigate(paths.requests);
   };
 
+  const handleConfirmCancel = (reason: string) => {
+    if (!request.rowVersion) return;
+    setCancelling(true);
+    setCancelError(null);
+    void cancelSubmittedRequest(request.id, {
+      reason: reason.trim() === '' ? null : reason,
+      rowVersion: request.rowVersion,
+    }).then((result) => {
+      setCancelling(false);
+      if (!result.ok) {
+        setCancelError(result.error);
+        return;
+      }
+      setCancelOpen(false);
+      showToast({
+        tone: 'success',
+        title: 'Request cancelled',
+        description: `${result.data.requestNumber} was cancelled.`,
+      });
+      navigate(paths.requests);
+    });
+  };
+
   const assignees =
     request.workflowType === 'hierarchy_approval'
       ? (request.approvalSteps ?? []).map((step) => ({
@@ -244,13 +275,26 @@ export function EditRequestPage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 lg:p-6">
         <div>
-          <Link
-            to={paths.requestDetails(request.id)}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900"
-          >
-            <ArrowLeft size={16} aria-hidden />
-            Back to request
-          </Link>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link
+              to={paths.requestDetails(request.id)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900"
+            >
+              <ArrowLeft size={16} aria-hidden />
+              Back to request
+            </Link>
+            <button
+              type="button"
+              disabled={submitting || cancelling}
+              onClick={() => {
+                setCancelError(null);
+                setCancelOpen(true);
+              }}
+              className="ml-auto rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel Request
+            </button>
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold text-brand-900">Edit &amp; Resubmit</h1>
             <RequestStatusBadge status={request.status} />
@@ -384,7 +428,7 @@ export function EditRequestPage() {
             approval process.
           </p>
           <RequestFormActions
-            canSubmit={!submitting}
+            canSubmit={!submitting && !cancelling}
             submitting={submitting}
             submitLabel="Resubmit Request"
             resetLabel="Discard Changes"
@@ -393,6 +437,20 @@ export function EditRequestPage() {
           />
         </div>
       </div>
+
+      <CancelRequestDialog
+        open={cancelOpen}
+        submitting={cancelling}
+        error={cancelError}
+        requestNumber={request.requestNumber}
+        onCancel={() => {
+          if (!cancelling) {
+            setCancelOpen(false);
+            setCancelError(null);
+          }
+        }}
+        onConfirm={handleConfirmCancel}
+      />
     </div>
   );
 }
