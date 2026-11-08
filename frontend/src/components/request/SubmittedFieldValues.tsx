@@ -13,6 +13,8 @@ interface SheetDetails {
   groupName?: string | null;
   submittedAt: string;
   revisionLabel?: string | null;
+  /** Timestamp of the current revision, once a resubmission exists. */
+  revisionDate?: string | null;
 }
 
 interface SubmittedFieldValuesProps {
@@ -103,6 +105,13 @@ export function SubmittedFieldValues({
           id: 'revision',
           label: 'Revision',
           node: details.revisionLabel,
+        });
+      }
+      if (details.revisionDate) {
+        requester.push({
+          id: 'revision-date',
+          label: 'Revision date',
+          node: formatDateTime(details.revisionDate),
         });
       }
     }

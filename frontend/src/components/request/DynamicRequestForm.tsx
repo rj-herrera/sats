@@ -14,6 +14,10 @@ interface DynamicRequestFormProps {
   existingAttachments?: AttachmentMetadata[];
   removedAttachmentFieldIds?: Set<string>;
   onRemoveExistingAttachment?: (fieldId: string) => void;
+  /** Newly chosen files are being sent with the request. */
+  uploading?: boolean;
+  /** Fields only, for a parent card that already supplies the heading and border. */
+  embedded?: boolean;
 }
 
 export function DynamicRequestForm({
@@ -28,13 +32,13 @@ export function DynamicRequestForm({
   existingAttachments = [],
   removedAttachmentFieldIds,
   onRemoveExistingAttachment,
+  uploading = false,
+  embedded = false,
 }: DynamicRequestFormProps) {
   const fieldList = fields ?? template?.fields ?? [];
 
-  return (
-    <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-semibold text-brand-900">{title}</h2>
-      <div className="mt-5 grid gap-4">
+  const fieldsGrid = (
+    <div className={embedded ? 'grid gap-4' : 'mt-5 grid gap-4'}>
         {fieldList.map((field) => {
           const selected = files[field.id] ?? [];
           const kept = existingAttachments.filter((attachment) => {
@@ -59,10 +63,19 @@ export function DynamicRequestForm({
                   ? (attachmentId) => onRemoveExistingAttachment(attachmentId)
                   : undefined
               }
+              uploading={uploading}
             />
           );
         })}
-      </div>
+    </div>
+  );
+
+  if (embedded) return fieldsGrid;
+
+  return (
+    <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+      <h2 className="text-base font-semibold text-brand-900">{title}</h2>
+      {fieldsGrid}
     </section>
   );
 }

@@ -7,7 +7,7 @@ interface ActivityTimelineProps {
 
 export function ActivityTimeline({ events }: ActivityTimelineProps) {
   const ordered = [...events].sort((a, b) =>
-    a.timestamp.localeCompare(b.timestamp),
+    b.timestamp.localeCompare(a.timestamp),
   );
 
   return (
@@ -38,17 +38,9 @@ export function ActivityTimeline({ events }: ActivityTimelineProps) {
                     </p>
                     <p className="shrink-0 text-xs leading-5 text-slate-500">
                       {formatDateTime(event.timestamp)}
-                      {event.revisionNumber != null && event.revisionNumber > 1
-                        ? ` · Rev ${event.revisionNumber}`
-                        : ''}
                     </p>
                   </div>
                   <p className="text-sm text-slate-500">{event.actorName}</p>
-                  {event.comment ? (
-                    <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">
-                      “{event.comment}”
-                    </p>
-                  ) : null}
                 </div>
               </li>
             );

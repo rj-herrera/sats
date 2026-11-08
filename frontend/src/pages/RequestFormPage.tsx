@@ -205,29 +205,38 @@ export function RequestFormPage() {
               </p>
             ) : null}
             <div className="grid min-h-0 items-start gap-6 grid-cols-1 lg:grid-cols-3">
-              <div className="min-h-0 min-w-0 self-stretch overflow-y-auto lg:col-span-2">
-                <DynamicRequestForm
-                  template={selectedTemplate}
-                  values={values}
-                  files={files}
-                  errors={fieldErrors}
-                  onChange={(fieldId, value) => {
-                    setValues((prev) => ({ ...prev, [fieldId]: value }));
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next[fieldId];
-                      return next;
-                    });
-                  }}
-                  onFilesChange={(fieldId, next) => {
-                    setFiles((prev) => ({ ...prev, [fieldId]: next }));
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next[fieldId];
-                      return next;
-                    });
-                  }}
-                />
+              <div className="flex min-h-0 min-w-0 self-stretch flex-col overflow-hidden lg:col-span-2">
+                <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm">
+                  <h2 className="shrink-0 px-5 pt-5 text-base font-semibold text-brand-900">
+                    Request information
+                  </h2>
+                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+                    <DynamicRequestForm
+                      embedded
+                      uploading={submitting}
+                      template={selectedTemplate}
+                      values={values}
+                      files={files}
+                      errors={fieldErrors}
+                      onChange={(fieldId, value) => {
+                        setValues((prev) => ({ ...prev, [fieldId]: value }));
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next[fieldId];
+                          return next;
+                        });
+                      }}
+                      onFilesChange={(fieldId, next) => {
+                        setFiles((prev) => ({ ...prev, [fieldId]: next }));
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next[fieldId];
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                </section>
               </div>
 
               <aside className="min-w-0 lg:col-span-1">

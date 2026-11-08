@@ -1,5 +1,5 @@
 import type { ReviewerSnapshot, StepStatus } from '@/types';
-import { getRoleLabel } from '@/utils/permissions';
+import { getUserById } from '@/services/userRepository';
 import { ProgressTimeline } from './ApprovalProgress';
 
 interface ReviewerProgressProps {
@@ -18,7 +18,7 @@ export function ReviewerProgress({ reviewers }: ReviewerProgressProps) {
       items={(reviewers ?? []).map((reviewer) => ({
         key: reviewer.userId,
         name: reviewer.name,
-        position: getRoleLabel(reviewer.role),
+        position: getUserById(reviewer.userId)?.designation?.trim() || 'Position unavailable',
         status: statusOf(reviewer),
         actionAt: reviewer.actionAt,
         comments: reviewer.comments,

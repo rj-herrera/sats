@@ -19,7 +19,6 @@ import {
   getUserCompletedDecision,
   isUserAssignedToRequest,
 } from '@/utils/assignmentHelpers';
-import { formatDateTime } from '@/utils/formatDisplay';
 import { canUserOpenReview, canUserTakeAction } from '@/utils/requestAccess';
 
 export function ReviewPage() {
@@ -149,7 +148,7 @@ export function ReviewPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 lg:p-6">
+      <div className="shrink-0 bg-surface px-4 pt-4 pb-6 lg:px-6 lg:pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             to={paths.inbox}
@@ -171,7 +170,8 @@ export function ReviewPage() {
             </button>
           ) : null}
         </div>
-
+      </div>
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-6">
         {successMessage ? (
           <div
             className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
@@ -190,8 +190,8 @@ export function ReviewPage() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
-          <div className="min-w-0 space-y-6 lg:col-span-3">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+          <div className="min-w-0 space-y-6 lg:col-span-2">
             <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
               <RequestDetailsHeader request={request} variant="summary" />
               <SubmittedFieldValues
@@ -205,12 +205,10 @@ export function ReviewPage() {
                   submittedAt: request.submittedAt,
                   revisionLabel:
                     request.revisionNumber > 1 || request.lastResubmittedAt
-                      ? `Revision ${request.revisionNumber}${
-                          request.lastResubmittedAt
-                            ? ` · last resubmitted ${formatDateTime(request.lastResubmittedAt)}`
-                            : ''
-                        }`
+                      ? `Revision ${request.revisionNumber}`
                       : null,
+                  revisionDate:
+                    request.revisionNumber > 1 ? request.lastResubmittedAt : null,
                 }}
               />
             </section>

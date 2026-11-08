@@ -22,7 +22,7 @@ export const ALLOWED_FILE_EXTENSIONS = [
 export const FILE_ACCEPT = ALLOWED_FILE_EXTENSIONS.join(',');
 
 export const FILE_FIELD_RULES =
-  'Up to 5 files, 20 MB each. PDF, Word, Excel, PowerPoint, CSV, text, PNG, or JPEG.';
+  'Up to 5 files, 20 MB each.';
 
 export function isAllowedDocument(file: File): boolean {
   const name = file.name.toLowerCase();
@@ -44,18 +44,33 @@ export function validateSelectedFiles(files: File[], reserved = 0): string | nul
   return null;
 }
 
+function fileNameKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 /** Keep files that fit the rules. Stop at the first file that does not. */
 export function addPickedFiles(
   current: File[],
   picked: File[],
   reserved = 0,
+  existingNames: string[] = [],
 ): { files: File[]; error: string | null } {
+  const names = new Set(
+    [...current.map((file) => file.name), ...existingNames].map(fileNameKey),
+  );
   const accepted: File[] = [];
   for (const file of picked) {
+    if (names.has(fileNameKey(file.name))) {
+      return {
+        files: [...current, ...accepted],
+        error: `${file.name} is already attached.`,
+      };
+    }
     const error = validateSelectedFiles([...current, ...accepted, file], reserved);
     if (error) {
       return { files: [...current, ...accepted], error };
     }
+    names.add(fileNameKey(file.name));
     accepted.push(file);
   }
   return { files: [...current, ...accepted], error: null };

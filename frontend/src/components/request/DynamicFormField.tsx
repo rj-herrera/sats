@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Loader2, Paperclip, X } from 'lucide-react';
 import type { AttachmentMetadata, FieldValue, FormFieldDefinition } from '@/types';
 import {
   getCurrencyFieldMeta,
@@ -20,12 +21,47 @@ interface DynamicFormFieldProps {
   /** Previously saved metadata (revision edit). Contents are not stored. */
   existingAttachments?: AttachmentMetadata[];
   onRemoveExistingAttachment?: (attachmentId: string) => void;
+  /** Newly chosen files are being sent with the request. */
+  uploading?: boolean;
 }
 
-function formatBytes(size: number): string {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+function FilePill({
+  name,
+  onRemove,
+  uploading = false,
+}: {
+  name: string;
+  onRemove?: () => void;
+  uploading?: boolean;
+}) {
+  return (
+    <li className="inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50">
+      <span
+        className={`inline-flex min-w-0 items-center gap-1.5 py-1 pl-2.5 ${onRemove || uploading ? 'pr-2' : 'pr-2.5'}`}
+      >
+        <Paperclip size={14} className="shrink-0 text-slate-500" aria-hidden />
+        <span className="max-w-52 truncate text-sm text-slate-800">{name}</span>
+      </span>
+      {uploading ? (
+        <span
+          className="mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center text-slate-500"
+          role="status"
+          aria-label={`Uploading ${name}`}
+        >
+          <Loader2 size={14} className="animate-spin" aria-hidden />
+        </span>
+      ) : onRemove ? (
+        <button
+          type="button"
+          aria-label={`Remove ${name}`}
+          onClick={onRemove}
+          className="mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+        >
+          <X size={14} aria-hidden />
+        </button>
+      ) : null}
+    </li>
+  );
 }
 
 export function DynamicFormField({
@@ -37,6 +73,7 @@ export function DynamicFormField({
   onFilesChange,
   existingAttachments = [],
   onRemoveExistingAttachment,
+  uploading = false,
 }: DynamicFormFieldProps) {
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const inputId = `field-${field.id}`;
@@ -75,7 +112,7 @@ export function DynamicFormField({
         {label}
         <textarea
           id={inputId}
-          className={`${controlClass} min-h-28 resize-y`}
+          className={`${controlClass} min-h-20 resize-y`}
           value={typeof value === 'string' ? value : ''}
           placeholder={field.placeholder}
           maxLength={field.maxLength}
@@ -193,63 +230,51 @@ export function DynamicFormField({
           className="mt-1.5 block w-full text-sm text-brand-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-200"
           aria-invalid={Boolean(shownError)}
           aria-describedby={helpId}
+          disabled={uploading}
           onChange={(event) => {
             const picked = Array.from(event.target.files ?? []);
             event.target.value = '';
             if (picked.length === 0) return;
-            const result = addPickedFiles(files, picked, reserved);
+            const result = addPickedFiles(
+              files,
+              picked,
+              reserved,
+              existingAttachments.map((attachment) => attachment.fileName),
+            );
             onFilesChange?.(result.files);
             onChange(result.files.length > 0 ? result.files.map((item) => item.name).join(', ') : null);
             setSelectionError(result.error);
           }}
         />
         {files.length > 0 ? (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 flex flex-wrap gap-2">
             {files.map((item, index) => (
-              <li
+              <FilePill
                 key={`${item.name}-${item.size}-${item.lastModified}`}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700"
-              >
-                <span className="font-medium">{item.name}</span>
-                <span>({formatBytes(item.size)})</span>
-                <button
-                  type="button"
-                  className="ml-auto text-brand-800 underline hover:no-underline"
-                  onClick={() => {
-                    const next = files.filter((_, itemIndex) => itemIndex !== index);
-                    onFilesChange?.(next);
-                    onChange(next.length > 0 ? next.map((entry) => entry.name).join(', ') : null);
-                    setSelectionError(null);
-                  }}
-                >
-                  Remove
-                </button>
-              </li>
+                name={item.name}
+                uploading={uploading}
+                onRemove={uploading ? undefined : () => {
+                  const next = files.filter((_, itemIndex) => itemIndex !== index);
+                  onFilesChange?.(next);
+                  onChange(next.length > 0 ? next.map((entry) => entry.name).join(', ') : null);
+                  setSelectionError(null);
+                }}
+              />
             ))}
           </ul>
         ) : null}
         {existingAttachments.length > 0 ? (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 flex flex-wrap gap-2">
             {existingAttachments.map((attachment) => (
-              <li
+              <FilePill
                 key={attachment.id ?? `${attachment.fileName}-${attachment.fileSize}`}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-700"
-              >
-                <span className="font-medium">{attachment.fileName}</span>
-                <span>({formatBytes(attachment.fileSize)})</span>
-                <span className="text-brand-500">Already attached</span>
-                {onRemoveExistingAttachment ? (
-                  <button
-                    type="button"
-                    className="ml-auto text-brand-800 underline hover:no-underline"
-                    onClick={() =>
-                      onRemoveExistingAttachment(attachment.id ?? attachment.fieldId)
-                    }
-                  >
-                    Remove
-                  </button>
-                ) : null}
-              </li>
+                name={attachment.fileName}
+                onRemove={
+                  onRemoveExistingAttachment
+                    ? () => onRemoveExistingAttachment(attachment.id ?? attachment.fieldId)
+                    : undefined
+                }
+              />
             ))}
           </ul>
         ) : null}

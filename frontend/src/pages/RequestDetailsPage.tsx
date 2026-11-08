@@ -18,7 +18,6 @@ import {
   removeRequestAttachment,
 } from '@/services/requestApi';
 import type { SubmittedRequest } from '@/types';
-import { formatDateTime } from '@/utils/formatDisplay';
 import { canUserViewRequest } from '@/utils/requestAccess';
 import { canRequesterCancel, canRequesterEditResubmit } from '@/utils/requestOwnership';
 
@@ -134,7 +133,7 @@ export function RequestDetailsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 lg:p-6">
+      <div className="shrink-0 bg-surface px-4 pt-4 pb-6 lg:px-6 lg:pt-6">
         <RequestDetailsHeader
           request={request}
           showBackToMyRequests={isOwner}
@@ -142,7 +141,8 @@ export function RequestDetailsPage() {
           onCancelClick={openCancel}
           variant="toolbar"
         />
-
+      </div>
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-6">
         {flash ? (
           <div
             className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
@@ -152,8 +152,8 @@ export function RequestDetailsPage() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
-          <div className="min-w-0 space-y-6 lg:col-span-3">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+          <div className="min-w-0 space-y-6 lg:col-span-2">
             <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <RequestDetailsHeader request={request} variant="summary" />
@@ -170,12 +170,10 @@ export function RequestDetailsPage() {
                   submittedAt: request.submittedAt,
                   revisionLabel:
                     request.revisionNumber > 1 || request.lastResubmittedAt
-                      ? `Revision ${request.revisionNumber}${
-                          request.lastResubmittedAt
-                            ? ` · last resubmitted ${formatDateTime(request.lastResubmittedAt)}`
-                            : ''
-                        }`
+                      ? `Revision ${request.revisionNumber}`
                       : null,
+                  revisionDate:
+                    request.revisionNumber > 1 ? request.lastResubmittedAt : null,
                 }}
                 onRemoveAttachment={
                   canRequesterEditResubmit(user, request)

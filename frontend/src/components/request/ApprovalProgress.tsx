@@ -1,5 +1,6 @@
 import { Check, Undo2, X } from 'lucide-react';
 import type { ApprovalStepSnapshot, StepStatus } from '@/types';
+import { getUserById } from '@/services/userRepository';
 import { formatDateTime } from '@/utils/formatDisplay';
 
 interface ApprovalProgressProps {
@@ -57,7 +58,7 @@ function thirdLine(item: ProgressTimelineItem) {
   if (item.actionAt) return null;
   if (item.status === 'Pending') {
     return (
-      <span className="mt-1 inline-flex w-fit rounded-full border border-blue-300 bg-blue-200 px-2 py-0.5 text-xs font-medium text-blue-800">
+      <span className="mt-1 inline-flex w-fit rounded-full border border-blue-300 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
         In progress
       </span>
     );
@@ -144,7 +145,7 @@ export function ApprovalProgress({ steps }: ApprovalProgressProps) {
       items={ordered.map((step) => ({
         key: `${step.stepOrder}-${step.userId}`,
         name: step.name,
-        position: step.roleLabel,
+        position: getUserById(step.userId)?.designation?.trim() || 'Position unavailable',
         status: statusOf(step),
         actionAt: step.actionAt,
         comments: step.comments,
