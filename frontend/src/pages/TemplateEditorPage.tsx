@@ -88,16 +88,14 @@ function basicStepError(state: EditorState): string | null {
 }
 
 function createInitialFields(): FormFieldDefinition[] {
-  const fields: FormFieldDefinition[] = [];
-  for (let index = 0; index < 3; index += 1) {
-    fields.push({
-      id: createFieldId(fields.map((field) => field.id)),
+  return [
+    {
+      id: createFieldId([]),
       label: '',
       type: 'text',
       required: false,
-    });
-  }
-  return fields;
+    },
+  ];
 }
 
 function buildInitialState(user: User, existing?: FormTemplate): EditorState {
@@ -473,7 +471,12 @@ export function TemplateEditorPage() {
           </ol>
         </nav>
 
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+        <div
+          className={[
+            'min-h-0 w-full max-h-full overflow-y-auto rounded-lg border border-brand-100 bg-white shadow-sm',
+            currentStep.id === 'fields' ? '' : 'p-5',
+          ].join(' ')}
+        >
           {currentStep.id === 'basic' ? (
             <TemplateBasicInformation
               user={user}
