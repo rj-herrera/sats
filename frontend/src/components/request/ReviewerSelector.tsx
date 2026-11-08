@@ -126,21 +126,20 @@ export function ReviewerSelector({
   useLayoutEffect(() => {
     const section = sectionRef.current;
     if (!section) return undefined;
-    const scrollParent = section.parentElement?.closest('.overflow-y-auto');
-
+    const page = section.closest('div.flex.h-full');
+    const content = section.closest('.overflow-hidden');
     const update = () => {
       const sectionTop = section.getBoundingClientRect().top;
-      const topInView = scrollParent
-        ? sectionTop - scrollParent.getBoundingClientRect().top + scrollParent.scrollTop
-        : sectionTop;
-      const visibleHeight = scrollParent?.getBoundingClientRect().height ?? window.innerHeight;
-      const next = Math.max(Math.floor(visibleHeight - topInView - 8), 180);
+      const footer = page?.querySelector(':scope > .shrink-0.border-t');
+      const footerHeight = footer?.getBoundingClientRect().height ?? 0;
+      const limit = window.innerHeight - footerHeight - 12;
+      const next = Math.max(Math.floor(limit - sectionTop), 180);
       setMaxHeight((current) => (current === next ? current : next));
     };
 
     update();
     const observer = new ResizeObserver(update);
-    if (scrollParent) observer.observe(scrollParent);
+    if (content) observer.observe(content);
     window.addEventListener('resize', update);
     return () => {
       observer.disconnect();
@@ -259,14 +258,17 @@ export function ReviewerSelector({
     <section
       ref={sectionRef}
       style={maxHeight ? { maxHeight } : undefined}
-      className="flex flex-col overflow-y-auto overscroll-contain rounded-lg border border-brand-100 bg-white p-5 shadow-sm"
+      className="overflow-y-auto overscroll-contain rounded-lg border border-brand-100 bg-white shadow-sm"
     >
-      <h2 className="shrink-0 text-base font-semibold text-brand-900">Select Reviewers / Approvers</h2>
-      <p className="mt-1 shrink-0 text-sm text-brand-600">
-        Choose a group, then an {person} in that group.
-      </p>
+      <div className="sticky top-0 z-10 bg-white px-5 pb-4 pt-5">
+        <h2 className="text-base font-semibold text-brand-900">Select Reviewers / Approvers</h2>
+        <p className="mt-1 text-sm text-brand-600">
+          Choose a group, then an {person} in that group.
+        </p>
+      </div>
 
-      <div ref={rootRef} className="mt-4 space-y-3">
+      <div className="px-5 pb-5">
+      <div ref={rootRef} className="space-y-3">
         {rows.map((row, index) => {
           const group = groups.find((item) => item.id === row.groupId);
           const employee = candidates.find((user) => user.id === row.userId);
@@ -351,7 +353,7 @@ export function ReviewerSelector({
         type="button"
         onClick={addRow}
         disabled={!canAdd}
-        className="mt-3 inline-flex shrink-0 items-center gap-1.5 self-start rounded-md border border-brand-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-3 inline-flex shrink-0 items-center gap-1.5 self-start rounded-md border-2 border-dashed border-brand-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Plus size={16} aria-hidden />
         Add Approver/Reviewer
@@ -362,6 +364,7 @@ export function ReviewerSelector({
           {error}
         </p>
       ) : null}
+      </div>
 
       {open && openRow
         ? createPortal(

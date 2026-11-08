@@ -10,7 +10,7 @@ export function ApprovalWorkflowPreview({
   errors = [],
 }: ApprovalWorkflowPreviewProps) {
   return (
-    <section className="flex h-full flex-col rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
+    <section className="overflow-y-auto rounded-lg border border-brand-100 bg-white p-5 shadow-sm">
       <h2 className="text-base font-semibold text-brand-900">Approval Workflow</h2>
 
       {errors.length > 0 ? (

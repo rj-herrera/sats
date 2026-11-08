@@ -178,27 +178,34 @@ export function RequestFormPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 lg:p-6">
-        <div>
+      <div className="flex min-h-0 shrink flex-col gap-6 overflow-hidden p-4 lg:p-6">
+        <div className="shrink-0">
           <h1 className="text-xl font-semibold text-brand-900">New Request</h1>
         </div>
 
-        <TemplateSelector
-          templates={availableTemplates}
-          value={templateId}
-          onChange={handleTemplateChange}
-          description={selectedTemplate?.description}
-        />
-        {templatesError ? (
-          <p className="text-sm text-red-600" role="alert">
-            {templatesError}
-          </p>
-        ) : null}
+        <div className="shrink-0">
+          <TemplateSelector
+            templates={availableTemplates}
+            value={templateId}
+            onChange={handleTemplateChange}
+            description={selectedTemplate?.description}
+          />
+          {templatesError ? (
+            <p className="mt-3 text-sm text-red-600" role="alert">
+              {templatesError}
+            </p>
+          ) : null}
+        </div>
 
         {selectedTemplate && (
           <>
-            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-              <div className="min-w-0 lg:col-span-2">
+            {formError && selectedTemplate.workflow.type === 'hierarchy_approval' ? (
+              <p className="shrink-0 text-sm text-red-600" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="grid min-h-0 items-start gap-6 grid-cols-1 lg:grid-cols-3">
+              <div className="min-h-0 min-w-0 self-stretch overflow-y-auto lg:col-span-2">
                 <DynamicRequestForm
                   template={selectedTemplate}
                   values={values}
@@ -251,12 +258,6 @@ export function RequestFormPage() {
                 )}
               </aside>
             </div>
-
-            {formError && selectedTemplate.workflow.type === 'hierarchy_approval' ? (
-              <p className="text-sm text-red-600" role="alert">
-                {formError}
-              </p>
-            ) : null}
           </>
         )}
       </div>
