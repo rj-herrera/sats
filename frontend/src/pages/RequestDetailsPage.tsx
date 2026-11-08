@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ActivityTimeline } from '@/components/request/ActivityTimeline';
 import { ApprovalProgress } from '@/components/request/ApprovalProgress';
 import { CancelRequestDialog } from '@/components/request/CancelRequestDialog';
@@ -9,6 +9,7 @@ import { ReviewerProgress } from '@/components/request/ReviewerProgress';
 import { RevisionHistory } from '@/components/request/RevisionHistory';
 import { SubmittedFieldValues } from '@/components/request/SubmittedFieldValues';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -23,20 +24,16 @@ import { canRequesterCancel, canRequesterEditResubmit } from '@/utils/requestOwn
 
 export function RequestDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { canAccessInbox, inboxReady } = usePermissions();
-  const location = useLocation();
-  const locationState = location.state as { resubmitted?: boolean } | null;
-
   const [request, setRequest] = useState<SubmittedRequest | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [flash, setFlash] = useState<string | null>(
-    locationState?.resubmitted ? 'Request resubmitted successfully.' : null,
-  );
 
   useEffect(() => {
     if (!id) {
@@ -58,13 +55,10 @@ export function RequestDetailsPage() {
       setLoadError(null);
       setLoaded(true);
     });
-    if (locationState?.resubmitted) {
-      setFlash('Request resubmitted successfully.');
-    }
     return () => {
       cancelled = true;
     };
-  }, [id, locationState?.resubmitted]);
+  }, [id]);
 
   if (!loaded || !inboxReady) {
     return (
@@ -120,9 +114,13 @@ export function RequestDetailsPage() {
         setCancelError(result.error);
         return;
       }
-      setRequest(result.data);
       setCancelOpen(false);
-      setFlash('Request cancelled.');
+      showToast({
+        tone: 'success',
+        title: 'Request cancelled',
+        description: `${result.data.requestNumber} was cancelled.`,
+      });
+      navigate(paths.requests);
     });
   };
 
@@ -143,15 +141,6 @@ export function RequestDetailsPage() {
         />
       </div>
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-6">
-        {flash ? (
-          <div
-            className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-            role="status"
-          >
-            {flash}
-          </div>
-        ) : null}
-
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           <div className="min-w-0 space-y-6 lg:col-span-2">
             <section className="rounded-lg border border-brand-100 bg-white p-5 shadow-sm">

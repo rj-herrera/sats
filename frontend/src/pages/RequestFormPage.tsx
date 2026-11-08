@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ApprovalWorkflowPreview } from '@/components/request/ApprovalWorkflowPreview';
 import { DynamicRequestForm } from '@/components/request/DynamicRequestForm';
 import { RequestFormActions } from '@/components/request/RequestFormActions';
 import { ReviewerSelector } from '@/components/request/ReviewerSelector';
-import { SubmissionConfirmation } from '@/components/request/SubmissionConfirmation';
 import { TemplateSelector } from '@/components/request/TemplateSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { paths } from '@/routes/paths';
 import { createSubmittedRequest } from '@/services/requestApi';
 import { listAvailableTemplates } from '@/services/templateApi';
 import {
@@ -18,6 +20,8 @@ import { emptyValuesForTemplate, validateRequestForm } from '@/utils/formValidat
 
 export function RequestFormPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [availableTemplates, setAvailableTemplates] = useState<FormTemplate[]>([]);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -30,7 +34,6 @@ export function RequestFormPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submittedNumber, setSubmittedNumber] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -91,12 +94,6 @@ export function RequestFormPage() {
   const handleReset = () => {
     setTemplateId('');
     resetForTemplate(undefined);
-    setSubmittedNumber(null);
-  };
-
-  const handleCreateAnother = () => {
-    setSubmittedNumber(null);
-    handleReset();
   };
 
   const handleSubmit = async () => {
@@ -152,22 +149,16 @@ export function RequestFormPage() {
       return;
     }
 
-    setSubmittedNumber(saved.data.requestNumber);
+    showToast({
+      tone: 'success',
+      title: 'Request submitted',
+      description: `${saved.data.requestNumber} was submitted.`,
+    });
+    navigate(paths.requests);
   };
 
   if (!user) {
     return null;
-  }
-
-  if (submittedNumber) {
-    return (
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
-        <SubmissionConfirmation
-          requestNumber={submittedNumber}
-          onCreateAnother={handleCreateAnother}
-        />
-      </div>
-    );
   }
 
   const canAttemptSubmit = Boolean(selectedTemplate) && !submitting;

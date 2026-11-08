@@ -5,6 +5,7 @@ import { DynamicRequestForm } from '@/components/request/DynamicRequestForm';
 import { RequestFormActions } from '@/components/request/RequestFormActions';
 import { RequestStatusBadge } from '@/components/request/RequestStatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
 import { getRequest, resubmitSubmittedRequest } from '@/services/requestApi';
@@ -18,6 +19,7 @@ import { formatDateTime } from '@/utils/formatDisplay';
 export function EditRequestPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [request, setRequest] = useState<SubmittedRequest | null>(null);
@@ -212,10 +214,12 @@ export function EditRequestPage() {
       return;
     }
 
-    navigate(paths.requestDetails(result.data.id), {
-      replace: true,
-      state: { resubmitted: true },
+    showToast({
+      tone: 'success',
+      title: 'Request resubmitted',
+      description: `${result.data.requestNumber} was resubmitted.`,
     });
+    navigate(paths.requests);
   };
 
   const assignees =

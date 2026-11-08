@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { ToastBanner } from '@/contexts/ToastContext';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
@@ -11,8 +12,9 @@ export function AppLayout() {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <Outlet />
+          <ToastBanner />
         </main>
       </div>
     </div>

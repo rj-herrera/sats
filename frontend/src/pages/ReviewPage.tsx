@@ -10,6 +10,7 @@ import { ReviewerProgress } from '@/components/request/ReviewerProgress';
 import { RevisionHistory } from '@/components/request/RevisionHistory';
 import { SubmittedFieldValues } from '@/components/request/SubmittedFieldValues';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PageScroll } from '@/layouts/PageScroll';
 import { paths } from '@/routes/paths';
 import { getRequest, submitDecision } from '@/services/requestApi';
@@ -25,6 +26,7 @@ export function ReviewPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [request, setRequest] = useState<SubmittedRequest | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -33,10 +35,8 @@ export function ReviewPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setSuccessMessage(null);
     setDialogOpen(false);
     setDecision(null);
     setDialogError(null);
@@ -132,17 +132,26 @@ export function ReviewPage() {
       setRequest(result.data);
       setDialogOpen(false);
       setDecision(null);
-      setSuccessMessage(
+      showToast(
         decision === 'approve'
-          ? 'Decision recorded successfully.'
+          ? {
+              tone: 'success',
+              title: 'Request approved',
+              description: 'The request has been approved.',
+            }
           : decision === 'reject'
-            ? 'Request rejected.'
-            : 'Request returned for revision.',
+            ? {
+                tone: 'error',
+                title: 'Request rejected',
+                description: 'The request has been rejected.',
+              }
+            : {
+                tone: 'info',
+                title: 'Request returned',
+                description: 'The request was returned for revision.',
+              },
       );
-
-      window.setTimeout(() => {
-        navigate(paths.inbox);
-      }, 900);
+      navigate(paths.inbox);
     });
   };
 
@@ -172,16 +181,7 @@ export function ReviewPage() {
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-6">
-        {successMessage ? (
-          <div
-            className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-            role="status"
-          >
-            {successMessage}
-          </div>
-        ) : null}
-
-        {!canAct && !successMessage ? (
+        {!canAct ? (
           <div
             className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             role="status"
