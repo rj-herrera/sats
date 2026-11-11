@@ -13,11 +13,14 @@ interface TemplatePreviewProps {
   template: FormTemplate;
   /** When false, the preview notice is omitted (e.g. shown in a modal header instead). */
   showNotice?: boolean;
+  /** Unsaved templates have no confirmed status yet. */
+  showStatus?: boolean;
 }
 
 export function TemplatePreview({
   template,
   showNotice = true,
+  showStatus = true,
 }: TemplatePreviewProps) {
   const [values, setValues] = useState<Record<string, FieldValue>>(() =>
     emptyValuesForTemplate(template),
@@ -63,7 +66,7 @@ export function TemplatePreview({
               ) : null}
             </div>
           </div>
-          <TemplateStatusBadge status={template.status} />
+          {showStatus ? <TemplateStatusBadge status={template.status} /> : null}
         </div>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div>

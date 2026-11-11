@@ -434,7 +434,7 @@ export function TemplateEditorPage() {
               Complete each step in order, then review and activate.
             </p>
           </div>
-          <TemplateStatusBadge status={state.status} />
+          {existing ? <TemplateStatusBadge status={existing.status} /> : null}
         </div>
 
         {error ? (
@@ -512,7 +512,7 @@ export function TemplateEditorPage() {
 
           {currentStep.id === 'preview' ? (
             <div className="space-y-4">
-              <TemplatePreview template={previewTemplate} />
+              <TemplatePreview template={previewTemplate} showStatus={Boolean(existing)} />
               <div className="rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
                 Review the configuration above. Activating makes this template
                 available for new requests. Existing submitted requests keep their

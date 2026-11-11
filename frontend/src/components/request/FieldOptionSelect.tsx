@@ -25,12 +25,26 @@ interface FieldOptionSelectProps {
   onChange: (value: string) => void;
 }
 
-function menuStyleFor(anchor: HTMLElement): CSSProperties {
+function menuSpace(anchor: HTMLElement): { below: number; above: number } {
   const rect = anchor.getBoundingClientRect();
   const gap = 4;
   const margin = 12;
-  const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
-  const spaceAbove = rect.top - gap - margin;
+  let belowLimit = window.innerHeight - margin;
+  const bar = anchor.closest('main')?.querySelector<HTMLElement>('[data-action-bar]');
+  if (bar) {
+    const barTop = bar.getBoundingClientRect().top;
+    if (barTop > rect.top) belowLimit = Math.min(belowLimit, barTop - margin);
+  }
+  return {
+    below: belowLimit - rect.bottom - gap,
+    above: rect.top - gap - margin,
+  };
+}
+
+function menuStyleFor(anchor: HTMLElement): CSSProperties {
+  const rect = anchor.getBoundingClientRect();
+  const gap = 4;
+  const { below: spaceBelow, above: spaceAbove } = menuSpace(anchor);
   const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
   const maxHeight = Math.min(280, Math.max(openUp ? spaceAbove : spaceBelow, 80));
   const shared: CSSProperties = {

@@ -133,7 +133,7 @@ export function ReviewerSelector({
       const footer = page?.querySelector(':scope > .shrink-0.border-t');
       const footerHeight = footer?.getBoundingClientRect().height ?? 0;
       const limit = window.innerHeight - footerHeight - 12;
-      const next = Math.max(Math.floor(limit - sectionTop), 180);
+      const next = Math.max(Math.floor(limit - sectionTop), 0);
       setMaxHeight((current) => (current === next ? current : next));
     };
 

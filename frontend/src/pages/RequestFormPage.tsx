@@ -169,7 +169,7 @@ export function RequestFormPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-0 shrink flex-col gap-6 overflow-hidden p-4 lg:p-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-4 lg:p-6">
         <div className="shrink-0">
           <h1 className="text-xl font-semibold text-brand-900">New Request</h1>
         </div>
@@ -195,13 +195,13 @@ export function RequestFormPage() {
                 {formError}
               </p>
             ) : null}
-            <div className="grid min-h-0 items-start gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="grid min-h-0 items-start gap-6 overflow-hidden grid-cols-1 lg:flex-1 lg:grid-cols-3">
               <div className="flex min-h-0 min-w-0 self-stretch flex-col overflow-hidden lg:col-span-2">
                 <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm">
                   <h2 className="shrink-0 px-5 pt-5 text-base font-semibold text-brand-900">
                     Request information
                   </h2>
-                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-5">
+                  <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-16">
                     <DynamicRequestForm
                       embedded
                       uploading={submitting}
@@ -230,7 +230,7 @@ export function RequestFormPage() {
                 </section>
               </div>
 
-              <aside className="min-w-0 lg:col-span-1">
+              <aside className="min-h-0 min-w-0 self-stretch overflow-hidden lg:col-span-1">
                 {selectedTemplate.workflow.type === 'review_checking' ? (
                   <ReviewerSelector
                     key={selectedTemplate.id}
@@ -263,7 +263,10 @@ export function RequestFormPage() {
       </div>
 
       {selectedTemplate ? (
-        <div className="mt-auto shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6">
+        <div
+          data-action-bar
+          className="mt-auto shrink-0 border-t border-brand-100 bg-white px-4 py-3 lg:px-6"
+        >
           <RequestFormActions
             canSubmit={canAttemptSubmit && !hierarchyBlocksSubmit}
             submitting={submitting}
