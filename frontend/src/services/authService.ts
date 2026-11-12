@@ -1,7 +1,7 @@
 import { resolveMockUserId, ROLE_SWITCHER_USERS } from '@/data/mockUsers';
 import { getGroupById } from '@/services/groupRepository';
 import { getUserById } from '@/services/userRepository';
-import type { AuthSession, Role, User } from '@/types';
+import type { AuthSession, User } from '@/types';
 
 /**
  * Development mock authentication.
@@ -81,7 +81,9 @@ export function ensureMockSession(): User {
 }
 
 /** Switch the active mock persona by generic role (dev/testing). */
-export function switchMockRole(role: Role): User {
+export function switchMockRole(
+  role: keyof typeof ROLE_SWITCHER_USERS,
+): User {
   const userId = ROLE_SWITCHER_USERS[role];
   return loginAsMockUser(userId);
 }
