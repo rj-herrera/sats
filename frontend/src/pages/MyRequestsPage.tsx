@@ -11,6 +11,7 @@ import {
   EMPTY_REQUEST_FILTERS,
   filterRequests,
   hasActiveFilters,
+  templateFilterOptions,
   type RequestListFilters,
 } from '@/utils/requestFilters';
 
@@ -42,6 +43,8 @@ export function MyRequestsPage() {
       cancelled = true;
     };
   }, [user, location.key]);
+
+  const templates = useMemo(() => templateFilterOptions(myRequests), [myRequests]);
 
   const filtered = useMemo(
     () => filterRequests(myRequests, filters),
@@ -83,6 +86,7 @@ export function MyRequestsPage() {
           <section className="overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm">
             <RequestFilters
               filters={filters}
+              templates={templates}
               onChange={setFilters}
               onClear={() => setFilters(EMPTY_REQUEST_FILTERS)}
               showClear={filtersActive}

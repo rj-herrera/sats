@@ -35,6 +35,7 @@ export function getRequestDisplayTitle(
     'fieldValues' | 'templateName' | 'fieldDefinitions' | 'templateId'
   >,
   fieldDefinitions?: FormFieldDefinition[],
+  options?: { includeTemplateFallback?: boolean },
 ): string {
   const fields = fieldDefinitions ?? request.fieldDefinitions ?? [];
   const values = request.fieldValues ?? {};
@@ -67,6 +68,8 @@ export function getRequestDisplayTitle(
       return formatTitleValue(value);
     }
   }
+
+  if (options?.includeTemplateFallback === false) return '';
 
   const templateName = request.templateName?.trim();
   return templateName || 'Untitled request';

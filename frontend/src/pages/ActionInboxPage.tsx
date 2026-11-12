@@ -9,6 +9,7 @@ import { listCompletedInbox, listInbox } from '@/services/requestApi';
 import type { InboxCompletedItem, InboxPendingItem } from '@/services/inboxService';
 import { REQUEST_STATUSES, type RequestStatus } from '@/types';
 import { isApprover, isGroupManager } from '@/utils/permissions';
+import { templateFilterOptions } from '@/utils/requestFilters';
 import { getRequestDisplayTitle } from '@/utils/requestTitle';
 
 type InboxTab = 'pending' | 'completed';
@@ -19,6 +20,7 @@ export function ActionInboxPage() {
   const [tab, setTab] = useState<InboxTab>('pending');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all');
+  const [templateFilter, setTemplateFilter] = useState('all');
   const [pending, setPending] = useState<InboxPendingItem[] | null>(null);
   const [completed, setCompleted] = useState<InboxCompletedItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -76,14 +78,26 @@ export function ActionInboxPage() {
   }
 
   const q = search.trim().toLowerCase();
+  const filtersActive =
+    q !== '' || statusFilter !== 'all' || templateFilter !== 'all';
+  const templateOptions = templateFilterOptions([
+    ...pending.map((item) => item.request),
+    ...completed.map((item) => item.request),
+  ]);
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setTemplateFilter('all');
+  };
 
   const filteredPending = pending.filter(({ request }) => {
     if (statusFilter !== 'all' && request.status !== statusFilter) return false;
+    if (templateFilter !== 'all' && request.templateId !== templateFilter) return false;
     if (!q) return true;
     const haystack = [
       request.requestNumber,
-      getRequestDisplayTitle(request),
-      request.templateName,
+      getRequestDisplayTitle(request, undefined, { includeTemplateFallback: false }),
       request.requesterName,
     ]
       .join(' ')
@@ -93,11 +107,11 @@ export function ActionInboxPage() {
 
   const filteredCompleted = completed.filter((item) => {
     if (statusFilter !== 'all' && item.request.status !== statusFilter) return false;
+    if (templateFilter !== 'all' && item.request.templateId !== templateFilter) return false;
     if (!q) return true;
     const haystack = [
       item.request.requestNumber,
-      getRequestDisplayTitle(item.request),
-      item.request.templateName,
+      getRequestDisplayTitle(item.request, undefined, { includeTemplateFallback: false }),
       item.request.requesterName,
       item.decision,
     ]
@@ -158,28 +172,25 @@ export function ActionInboxPage() {
         ) : (
           <section className="overflow-hidden rounded-lg border border-brand-100 bg-white shadow-sm">
             <div className="p-4">
-              {search.trim() || statusFilter !== 'all' ? (
+              {filtersActive ? (
                 <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSearch('');
-                      setStatusFilter('all');
-                    }}
+                    onClick={clearFilters}
                     className="text-sm font-medium text-brand-700 hover:text-brand-900"
                   >
                     Clear filters
                   </button>
                 </div>
               ) : null}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <label className="block sm:col-span-2">
                   <span className="mb-1 block text-xs font-medium text-brand-600">Search</span>
                   <input
                     type="search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Number, title, template, or requester…"
+                    placeholder="Number, title, or requester…"
                     className="w-full rounded-md border border-brand-200 bg-white px-3 py-2 text-sm text-brand-900 placeholder:text-brand-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                   />
                 </label>
@@ -200,6 +211,21 @@ export function ActionInboxPage() {
                     ))}
                   </select>
                 </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-brand-600">Template</span>
+                  <select
+                    value={templateFilter}
+                    onChange={(e) => setTemplateFilter(e.target.value)}
+                    className="w-full rounded-md border border-brand-200 bg-white py-2 pr-10 pl-3 text-sm text-brand-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  >
+                    <option value="all">All templates</option>
+                    {templateOptions.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </div>
 
@@ -212,10 +238,7 @@ export function ActionInboxPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setStatusFilter('all');
-                  }}
+                  onClick={clearFilters}
                   className="mt-5 rounded-md border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50"
                 >
                   Clear filters
